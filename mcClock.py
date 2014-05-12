@@ -30,6 +30,7 @@ buttons = {
     23 : "RIGHT",
     24 : "UP",
     27 : "DOWN",
+    18 : "ENABLE",
 }
 
 # Configure a VLC player
@@ -49,6 +50,11 @@ mlplayer.set_media_list(medialist)
 pressed = { }
 set_button = None
 set_time = None
+
+# keep hold on the enable pin
+for p in buttons :
+    if ( buttons[p] == "ENABLE" ) :
+        enable_pin = p
 
 # Detect two buttons pressed simultaneously
 def check_set(pin, ts):
@@ -86,48 +92,49 @@ def button_callback(channel):
 
     global set_button, set_time
 
-    if ( buttons[channel] == "SET" ) :
-        set_button = channel
-        set_time = time.time()
-        if ( player.is_playing() ) :
-            mlplayer.pause()
-        else :
-            mlplayer.play()
-            print(player.get_media().get_mrl())
-    elif ( buttons[channel] == "UP" ) :
-        if ( check_set(set_button, set_time) ) :
-            brightness = segment.disp.getBrightness()
+    if ( GPIO.input(enable_pin) == True ) :
+        # Alarm mode
+        brightness = segment.disp.getBrightness()
+        if ( buttons[channel] == "UP" ) :
             if ( brightness < 15 ) :
                 brightness = brightness + 1
                 segment.disp.setBrightness(brightness)
             print("brightness="+str(brightness))
-        else :
+        elif ( buttons[channel] == "DOWN" ) :
+            print "current brightness =", brightness
+            if ( brightness > 0 ) :
+                brightness = brightness - 1
+                print "decreased brightness =", brightness
+                segment.disp.setBrightness(brightness)
+            print("brightness="+str(brightness))
+    else :
+        # Player mode
+        if ( buttons[channel] == "SET" ) :
+            set_button = channel
+            set_time = time.time()
+            if ( player.is_playing() ) :
+                mlplayer.pause()
+            else :
+                mlplayer.play()
+                print(player.get_media().get_mrl())
+        elif ( buttons[channel] == "UP" ) :
             volume = player.audio_get_volume()
             if ( volume < 91 ) :
                 volume = volume + 10
                 player.audio_set_volume(volume)
                 print("volume="+str(volume))
-    elif ( buttons[channel] == "DOWN" ) :
-        if ( check_set(set_button, set_time) ) :
-            brightness = segment.disp.getBrightness()
-            if ( brightness > 0 ) :
-                brightness = brightness - 1
-                segment.disp.setBrightness(brightness)
-            print("brightness="+str(brightness))
-        else :
+        elif ( buttons[channel] == "DOWN" ) :
             volume = player.audio_get_volume()
             if ( volume > 9 ) :
                 volume = volume - 10
                 player.audio_set_volume(volume)
-                print("volume="+str(volume))
-    elif ( buttons[channel] == "LEFT" ) :
-        mlplayer.previous()
-        print(player.get_media().get_mrl())
-    elif ( buttons[channel] == "RIGHT" ) :
-        mlplayer.next()
-        print(player.get_media().get_mrl())
-
-    # print("brightness="+str(brightness))
+            print("volume="+str(volume))
+        elif ( buttons[channel] == "LEFT" ) :
+            mlplayer.previous()
+            print(player.get_media().get_mrl())
+        elif ( buttons[channel] == "RIGHT" ) :
+            mlplayer.next()
+            print(player.get_media().get_mrl())
 
 # Initialize the tactile switches inputs and callback
 for pin in buttons:
