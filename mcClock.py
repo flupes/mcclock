@@ -13,12 +13,13 @@ from Adafruit_7Segment import SevenSegment
 import glob
 import time
 import datetime
+import random
 
 # Initialize the 7 segment display
 segment = SevenSegment(address=0x70)
 
 # Set the default brightness
-segment.disp.setBrightness(6)
+segment.disp.setBrightness(4)
 
 # Use BMC numbering
 GPIO.setmode(GPIO.BCM)
@@ -33,115 +34,116 @@ buttons = {
     18 : "ENABLE",
 }
 
+# Time and song to wake up for each day of the week (0=Monday)
+wakeup = [
+    (datetime.time(7,20), "Dragons.mp3"),
+    (datetime.time(6,50), "Emeralds.mp3"),
+    (datetime.time(7,20), "FallenKingdom.mp3"),
+    (datetime.time(7,20), "MiningOres.mp3"),
+    (datetime.time(7,25), "NewWorld.mp3"),
+    (datetime.time(9,00), "Emeralds.mp3"),
+    (datetime.time(23,15), "FallenKingdom.mp3")
+    ]
+
+ringed = False
+currentDay = datetime.date.today().day
+
 # Configure a VLC player
 player = vlc.MediaPlayer()
-player.audio_set_volume(60)
+player.audio_set_volume(30)
 
 # List of songs
 musicdir = '/home/pi/Music/Minecraft'
 songs = glob.glob(musicdir+'/*.mp3')
-medialist = vlc.MediaList(songs)
 
 # MediaListPlayer
 mlplayer = vlc.MediaListPlayer()
 mlplayer.set_media_player(player)
-mlplayer.set_media_list(medialist)
-
-pressed = { }
-set_button = None
-set_time = None
 
 # keep hold on the enable pin
 for p in buttons :
-    if ( buttons[p] == "ENABLE" ) :
+    if buttons[p] == "ENABLE" :
         enable_pin = p
 
-# Detect two buttons pressed simultaneously
-def check_set(pin, ts):
-    # This does NOT work! (or rather the use of this function is wrong)
-    if ( set_button != None ) :
-        if ( GPIO.input(pin) == False ) :
-            if ( (time.time()-ts) > 0.4 ) :
-                return True
-    return False
-
-# Callback when tactile switch is released
+# Callback when tactile switch is pressed
 def button_callback(channel):
-
-    # global pressed
-    # elapsed = 0.
-    # longpress = None
-    # if (GPIO.input(channel) == False):
-    #     pressed[channel] = time.time()
-    #     print "button pressed"
-    # else:
-    #     if ( pressed.has_key(channel) ):
-    #         ts = time.time()
-    #         elapsed = ts-pressed[channel]        
-    #         print "elapsed =", elapsed
-    #     else:
-    #         print "no timestamp for pressed!"
-    #     if ( elapsed > 0.4 ):
-    #         longpress = True
-    #     else:
-    #         longpress = False
-
-#    if (longpress): p='LONG'
-#    else: p='SHORT'
-#    print("Button "+buttons[channel]+"("+str(channel)+") "+p+" pressed")
-
-    global set_button, set_time
-
-    if ( GPIO.input(enable_pin) == True ) :
+    if GPIO.input(enable_pin) == True and mlplayer.is_playing() == False :
         # Alarm mode
         brightness = segment.disp.getBrightness()
-        if ( buttons[channel] == "UP" ) :
-            if ( brightness < 15 ) :
+        if buttons[channel] == "UP" :
+            if brightness < 15 :
                 brightness = brightness + 1
                 segment.disp.setBrightness(brightness)
             print("brightness="+str(brightness))
-        elif ( buttons[channel] == "DOWN" ) :
-            print "current brightness =", brightness
-            if ( brightness > 0 ) :
+        elif buttons[channel] == "DOWN" :
+            if brightness > 0 :
                 brightness = brightness - 1
-                print "decreased brightness =", brightness
                 segment.disp.setBrightness(brightness)
             print("brightness="+str(brightness))
     else :
         # Player mode
-        if ( buttons[channel] == "SET" ) :
+        if buttons[channel] == "SET" :
             set_button = channel
             set_time = time.time()
-            if ( player.is_playing() ) :
+            if player.is_playing() :
                 mlplayer.pause()
             else :
                 mlplayer.play()
                 print(player.get_media().get_mrl())
-        elif ( buttons[channel] == "UP" ) :
+        elif buttons[channel] == "UP" :
             volume = player.audio_get_volume()
-            if ( volume < 91 ) :
+            if volume < 91 :
                 volume = volume + 10
                 player.audio_set_volume(volume)
                 print("volume="+str(volume))
-        elif ( buttons[channel] == "DOWN" ) :
+        elif buttons[channel] == "DOWN" :
             volume = player.audio_get_volume()
-            if ( volume > 9 ) :
+            if volume > 9 :
                 volume = volume - 10
                 player.audio_set_volume(volume)
             print("volume="+str(volume))
-        elif ( buttons[channel] == "LEFT" ) :
+        elif buttons[channel] == "LEFT" :
             mlplayer.previous()
             print(player.get_media().get_mrl())
-        elif ( buttons[channel] == "RIGHT" ) :
+        elif buttons[channel] == "RIGHT" :
             mlplayer.next()
             print(player.get_media().get_mrl())
+
+# Callback when the toggle switch change state
+def toggle_callback(channel):
+    if GPIO.input(channel) == True :
+        mlplayer.stop()
+    else :
+        mediaList = vlc.MediaList(songs)
+        mlplayer.set_media_list(mediaList)
 
 # Initialize the tactile switches inputs and callback
 for pin in buttons:
     print("configure button "+buttons[pin]+" on pin "+str(pin))
     GPIO.setup(pin, GPIO.IN)
-    GPIO.add_event_detect(pin, GPIO.FALLING, callback=button_callback, bouncetime=250)
-    
+    if pin == enable_pin :
+        GPIO.add_event_detect(pin, GPIO.BOTH, callback=toggle_callback, bouncetime=400)
+    else :
+        GPIO.add_event_detect(pin, GPIO.FALLING, callback=button_callback, bouncetime=200)
+
+if GPIO.input(enable_pin) == False :
+    mediaList = vlc.MediaList(songs)
+    mlplayer.set_media_list(mediaList)
+
+def play_alarm(day):
+    s = musicdir+"/"+wakeup[day][1]
+    pl = list(songs)
+    pl.remove(s)
+    random.shuffle(pl)
+    pl.insert(0, s)
+    print "play list for day", day
+    print pl
+    mediaList = vlc.MediaList(pl)
+    mlplayer.set_media_list(mediaList)
+    mlplayer.play()
+    global ringed
+    ringed = True
+
 def update_clock():
     now = datetime.datetime.now()
     hour = now.hour
@@ -155,8 +157,20 @@ def update_clock():
     segment.writeDigit(4, minute % 10)        # Ones
     # Toggle color
     segment.setColon(second % 2)              # Toggle colon at 1Hz
-    # Wait one second
+    # Check if alarm is necessary
+    global ringed
+    if GPIO.input(enable_pin) == True :
+        if not ringed :
+            day = now.weekday()
+            if now.time() > wakeup[day][0] :
+                play_alarm(day)
+    # Update alarm state
+    global currentDay
+    if currentDay != now.day :
+        currentDay = now.day
+        ringed = False
 
 while True:
     update_clock()
     time.sleep(1)
+
