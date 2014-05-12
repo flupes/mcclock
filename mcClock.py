@@ -42,7 +42,7 @@ wakeup = [
     (datetime.time(7,20), "MiningOres.mp3"),
     (datetime.time(7,25), "NewWorld.mp3"),
     (datetime.time(9,00), "Emeralds.mp3"),
-    (datetime.time(23,15), "FallenKingdom.mp3")
+    (datetime.time(23,38), "FallenKingdom.mp3")
     ]
 
 ringed = False
@@ -87,9 +87,10 @@ def button_callback(channel):
             set_time = time.time()
             if player.is_playing() :
                 mlplayer.pause()
+                print("pausing player")
             else :
                 mlplayer.play()
-                print(player.get_media().get_mrl())
+                print("start to play song: "+player.get_media().get_mrl())
         elif buttons[channel] == "UP" :
             volume = player.audio_get_volume()
             if volume < 91 :
@@ -104,27 +105,35 @@ def button_callback(channel):
             print("volume="+str(volume))
         elif buttons[channel] == "LEFT" :
             mlplayer.previous()
-            print(player.get_media().get_mrl())
+            print("move to previous song: "+player.get_media().get_mrl())
         elif buttons[channel] == "RIGHT" :
             mlplayer.next()
-            print(player.get_media().get_mrl())
+            print("move to next song: "+player.get_media().get_mrl())
 
 # Callback when the toggle switch change state
 def toggle_callback(channel):
-    if GPIO.input(channel) == True :
+    # It seems that 9 out of 10 times the pin still shows HIGH
+    # when the toggle is put to ground...
+    # We have extra resistors between the input and the switch to
+    # be super careful. The side effect is that the voltage drops 
+    # only at 0.3 V. Is it low enough?
+    if GPIO.input(enable_pin) == True :
         mlplayer.stop()
+        print("Alarm enabled -> stop playing song")
     else :
         mediaList = vlc.MediaList(songs)
         mlplayer.set_media_list(mediaList)
+        print("Alarm disabled -> reset playing list to:")
+        print(songs)
 
 # Initialize the tactile switches inputs and callback
 for pin in buttons:
     print("configure button "+buttons[pin]+" on pin "+str(pin))
     GPIO.setup(pin, GPIO.IN)
     if pin == enable_pin :
-        GPIO.add_event_detect(pin, GPIO.BOTH, callback=toggle_callback, bouncetime=400)
+        GPIO.add_event_detect(pin, GPIO.BOTH, callback=toggle_callback, bouncetime=600)
     else :
-        GPIO.add_event_detect(pin, GPIO.FALLING, callback=button_callback, bouncetime=200)
+        GPIO.add_event_detect(pin, GPIO.FALLING, callback=button_callback, bouncetime=300)
 
 if GPIO.input(enable_pin) == False :
     mediaList = vlc.MediaList(songs)
@@ -136,8 +145,8 @@ def play_alarm(day):
     pl.remove(s)
     random.shuffle(pl)
     pl.insert(0, s)
-    print "play list for day", day
-    print pl
+    print("play list for day "+str(day)+":")
+    print(pl)
     mediaList = vlc.MediaList(pl)
     mlplayer.set_media_list(mediaList)
     mlplayer.play()
