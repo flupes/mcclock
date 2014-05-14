@@ -27,10 +27,10 @@ GPIO.setmode(GPIO.BCM)
 # 5 tactile switches mapping
 buttons = {
     17 : "SET",
-    22 : "LEFT",
-    23 : "RIGHT",
-    24 : "UP",
-    27 : "DOWN",
+    24 : "LEFT",
+    21 : "RIGHT",
+    23 : "UP",
+    22 : "DOWN",
     18 : "ENABLE",
 }
 
@@ -45,12 +45,18 @@ wakeup = [
     (datetime.time(23,38), "FallenKingdom.mp3")
     ]
 
-ringed = False
-currentDay = datetime.date.today().day
+
+now = datetime.datetime.now()
+if now.time() > wakeup[now.weekday()][0] :
+    ringedToday = True
+else :
+    ringedToday = False
+
+currentDay = now.day
 
 # Configure a VLC player
 player = vlc.MediaPlayer()
-player.audio_set_volume(30)
+player.audio_set_volume(50)
 
 # List of songs
 musicdir = '/home/pi/Music/Minecraft'
@@ -150,8 +156,8 @@ def play_alarm(day):
     mediaList = vlc.MediaList(pl)
     mlplayer.set_media_list(mediaList)
     mlplayer.play()
-    global ringed
-    ringed = True
+    global ringedToday
+    ringedToday = True
 
 def update_clock():
     now = datetime.datetime.now()
@@ -167,9 +173,9 @@ def update_clock():
     # Toggle color
     segment.setColon(second % 2)              # Toggle colon at 1Hz
     # Check if alarm is necessary
-    global ringed
+    global ringedToday
     if GPIO.input(enable_pin) == True :
-        if not ringed :
+        if not ringedToday :
             day = now.weekday()
             if now.time() > wakeup[day][0] :
                 play_alarm(day)
@@ -177,7 +183,7 @@ def update_clock():
     global currentDay
     if currentDay != now.day :
         currentDay = now.day
-        ringed = False
+        ringedToday = False
 
 while True:
     update_clock()
