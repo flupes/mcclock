@@ -7,8 +7,16 @@ sys.path.append(basedir+'/Adafruit-Raspberry-Pi-Python-Code/Adafruit_LEDBackpack
 sys.path.append(basedir+'/pyvlc')
 
 import vlc
+
 import RPi.GPIO as GPIO
 from Adafruit_7Segment import SevenSegment
+
+# Test with the more recent RPIO instead of GPIO...
+# Unfortunately 1) it clashes with GPIO used by Adafruit, 
+# and 2) the hope of having better callbacks (return state as well 
+# as channel) did not concretize. The returned state is corrupted
+# most of the time (what I am doing wrong?)!
+# import RPIO
 
 import glob
 import time
@@ -28,7 +36,7 @@ GPIO.setmode(GPIO.BCM)
 buttons = {
     17 : "SET",
     24 : "LEFT",
-    21 : "RIGHT",
+    27 : "RIGHT",
     23 : "UP",
     22 : "DOWN",
     18 : "ENABLE",
@@ -53,6 +61,7 @@ else :
     ringedToday = False
 
 currentDay = now.day
+newEnableState = False
 
 # Configure a VLC player
 player = vlc.MediaPlayer()
@@ -67,13 +76,14 @@ mlplayer = vlc.MediaListPlayer()
 mlplayer.set_media_player(player)
 
 # keep hold on the enable pin
+enablePin = None
 for p in buttons :
     if buttons[p] == "ENABLE" :
-        enable_pin = p
+        enablePin = p
 
 # Callback when tactile switch is pressed
 def button_callback(channel):
-    if GPIO.input(enable_pin) == True and mlplayer.is_playing() == False :
+    if GPIO.input(enablePin) == True and mlplayer.is_playing() == False :
         # Alarm mode
         brightness = segment.disp.getBrightness()
         if buttons[channel] == "UP" :
@@ -116,14 +126,8 @@ def button_callback(channel):
             mlplayer.next()
             print("move to next song: "+player.get_media().get_mrl())
 
-# Callback when the toggle switch change state
-def toggle_callback(channel):
-    # It seems that 9 out of 10 times the pin still shows HIGH
-    # when the toggle is put to ground...
-    # We have extra resistors between the input and the switch to
-    # be super careful. The side effect is that the voltage drops 
-    # only at 0.3 V. Is it low enough?
-    if GPIO.input(enable_pin) == True :
+def toggle_enabled():
+    if GPIO.input(enablePin) == True :
         mlplayer.stop()
         print("Alarm enabled -> stop playing song")
     else :
@@ -132,16 +136,31 @@ def toggle_callback(channel):
         print("Alarm disabled -> reset playing list to:")
         print(songs)
 
+# Callback when the toggle switch change state
+def toggle_callback(channel):
+    print("enablePin = " + str(enablePin) + " -> " + str(GPIO.input(enablePin)))
+    # For some reason, the imput state is wrong in this callback: it renders
+    # the callback useless to toggle alarm versus player mode since 9 times
+    # out of 10 the state returned is True not matter what the real state is...
+    # Let's then just check periodically the state in the main loop
+    # toggle_enable()
+    global newEnableState
+    newEnableState = True
+
 # Initialize the tactile switches inputs and callback
 for pin in buttons:
     print("configure button "+buttons[pin]+" on pin "+str(pin))
     GPIO.setup(pin, GPIO.IN)
-    if pin == enable_pin :
-        GPIO.add_event_detect(pin, GPIO.BOTH, callback=toggle_callback, bouncetime=600)
+    if pin == enablePin :
+        # RPIO.add_interrupt_callback(pin, edge='both', callback=toggle_callback, \
+            # debounce_timeout_ms=400)
+        GPIO.add_event_detect(pin, GPIO.BOTH, callback=toggle_callback, bouncetime=400)
     else :
-        GPIO.add_event_detect(pin, GPIO.FALLING, callback=button_callback, bouncetime=300)
+        # RPIO.add_interrupt_callback(pin, edge='falling', callback=button_callback, \
+            # debounce_timeout_ms=200)
+        GPIO.add_event_detect(pin, GPIO.FALLING, callback=button_callback, bouncetime=200)
 
-if GPIO.input(enable_pin) == False :
+if GPIO.input(enablePin) == False :
     mediaList = vlc.MediaList(songs)
     mlplayer.set_media_list(mediaList)
 
@@ -169,12 +188,13 @@ def update_clock():
     segment.writeDigit(1, hour % 10)          # Ones
     # Set minutes
     segment.writeDigit(3, int(minute / 10))   # Tens
-    segment.writeDigit(4, minute % 10)        # Ones
+    # Ones and alarm enable (dot)
+    segment.writeDigit(4, minute % 10, GPIO.input(enablePin))
     # Toggle color
     segment.setColon(second % 2)              # Toggle colon at 1Hz
     # Check if alarm is necessary
     global ringedToday
-    if GPIO.input(enable_pin) == True :
+    if GPIO.input(enablePin) == True :
         if not ringedToday :
             day = now.weekday()
             if now.time() > wakeup[day][0] :
@@ -185,7 +205,12 @@ def update_clock():
         currentDay = now.day
         ringedToday = False
 
+# Main loop (now run at 2Hz: does not seem to consume more CPU and allow a quicker
+# detection of the enable button
 while True:
     update_clock()
-    time.sleep(1)
+    if newEnableState:
+        newEnableState = False
+        toggle_enabled()
+    time.sleep(0.5)
 
