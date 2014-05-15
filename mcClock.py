@@ -53,6 +53,7 @@ wakeup = [
     (datetime.time(23,38), "FallenKingdom.mp3")
     ]
 
+tformat='12h'
 
 now = datetime.datetime.now()
 if now.time() > wakeup[now.weekday()][0] :
@@ -183,9 +184,15 @@ def update_clock():
     hour = now.hour
     minute = now.minute
     second = now.second
+    # Switch 24h / 12h format
+    if tformat == '12h' and hour > 12 :
+        hour = hour - 12
+        dot = True
+    else:
+        dot = False
     # Set hours
     segment.writeDigit(0, int(hour / 10))     # Tens
-    segment.writeDigit(1, hour % 10)          # Ones
+    segment.writeDigit(1, hour % 10, dot)     # Ones
     # Set minutes
     segment.writeDigit(3, int(minute / 10))   # Tens
     # Ones and alarm enable (dot)
