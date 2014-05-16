@@ -107,14 +107,6 @@ def powerUsbBus(state):
     #print "should have executed the following command if not too shy:"
     #print powerUsbBusCmd
     
-switchUsbBus = False
-if not netCablePlugged and not GPIO.input(enablePin) :
-    # We allow ourself to power off the USB bus (and network)
-    # to minimize power
-    switchUsbBus = True
-    print("Will use low power mode by turning OFF the USB bus when not required")
-    powerUsbBus(False)
-
 # Callback when tactile switch is pressed
 def button_callback(channel):
     if GPIO.input(enablePin) == True and mlplayer.is_playing() == False :
@@ -197,6 +189,12 @@ for pin in buttons:
 if GPIO.input(enablePin) == False :
     mediaList = vlc.MediaList(songs)
     mlplayer.set_media_list(mediaList)
+
+if not netCablePlugged and not GPIO.input(enablePin) :
+    # We allow ourself to power off the USB bus (and network)
+    # to minimize power
+    print("Will use low power mode by turning OFF the USB bus when not required")
+    powerUsbBus(False)
 
 def play_alarm(day):
     s = musicdir+"/"+wakeup[day][1]
