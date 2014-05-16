@@ -102,10 +102,9 @@ def powerUsbBus(state):
     else :
         flag = '0x0'
         print("Turning the USB bus OFF")
-    powerUsbBusCmd = 'echo ' + flag + ' /sys/devices/platform/bcm2708_usb/buspower'
+    powerUsbBusCmd = 'echo ' + flag + ' > /sys/devices/platform/bcm2708_usb/buspower'
     cmdOutput = commands.getoutput(powerUsbBusCmd)    
-    #print "should have executed the following command if not too shy:"
-    #print powerUsbBusCmd
+    print("Result from: "+powerUsbBusCmd+" -> "+cmdOutput)
     
 # Callback when tactile switch is pressed
 def button_callback(channel):
@@ -190,11 +189,13 @@ if GPIO.input(enablePin) == False :
     mediaList = vlc.MediaList(songs)
     mlplayer.set_media_list(mediaList)
 
-if not netCablePlugged and not GPIO.input(enablePin) :
+if not netCablePlugged and GPIO.input(enablePin) :
     # We allow ourself to power off the USB bus (and network)
     # to minimize power
     print("Will use low power mode by turning OFF the USB bus when not required")
     powerUsbBus(False)
+else:
+    print("Will use regular power mode (USB bus on)")
 
 def play_alarm(day):
     s = musicdir+"/"+wakeup[day][1]
