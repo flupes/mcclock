@@ -1,0 +1,82 @@
+
+* Minecraft Jukebox Alarm Clock
+** Concept
+   An fun alarm clock for a 9 year old. It plays Minecraft songs for
+   wakeup. It can also be used as a real jukebox, by moving forwards and
+   backwards though the list of songs.
+** Development
+   I recently bought a Raspberry Pi for my son hoping to divert him from
+   playing Minecraft and try programming. He already had done a little
+   bit of scratch, and I thought the Minecraft API would be very exciting
+   for him... All wrong: the limited version of Minecraft on the Pi as no
+   appeal compared to the full fledge version on a laptop. In addition he
+   is simply not ready to program.
+
+   So I have now a Pi that I will probably not use (I prefer the
+   BeagleBone Black) and a very nice book for kids: "Adventures in
+   Raspberry Pi" by Carrie Anne Philbin. Well, by adding a few components
+   to my Pi kit, we can construct something useful for a nine year
+   old. He will not do the programming for it, but at least he will help
+   during the building process and understand a little bit the
+   capabilities of hardware mixed with software.
+
+   My son help with the initial design of the box (finding the right
+   size, laying out the components), he soldered most of the components
+   (he really enjoy this part), and kept complaining that I was spending
+   too much time on the cardboard part (not so easy to build a box;-)
+
+   As usual, I found that the most difficult --and boring-- aspect is to
+   create a simple user interface. The most basic interaction always
+   require at least a few buttons, and they are a pain to integrate.
+
+   Well, time will tell us if this project is a success or not!
+** BOM
+| Component                         | Link                                   | Price | For project |
+|-----------------------------------+----------------------------------------+-------+-------------|
+| Computer: Raspberry Pi Model B    | https://www.adafruit.com/products/998  | 39.95 |             |
+| USB powered speakers              | https://www.adafruit.com/products/1363 |  9.95 |           1 |
+| 0.56" blue seven segments display | https://www.adafruit.com/products/881  | 11.95 |           1 |
+| Real Time Clock (RTC)             | https://www.adafruit.com/products/264  |  9.00 |             |
+| Power supply: USB 5.4V            | https://www.adafruit.com/products/501  |  5.95 |             |
+| Half size perma proto for Pi      | https://www.adafruit.com/products/1148 |  5.95 |             |
+| Pi Cobbler breakout and cable     | https://www.adafruit.com/products/914  |  7.95 |             |
+| Square tactile button switches    | https://www.adafruit.com/products/1010 |  5.95 |           1 |
+| Toggle switch                     | recycled                               |     0 |             |
+| Box                               | cardboard from and old big box         |     0 |             |
+|-----------------------------------+----------------------------------------+-------+-------------|
+| Total (include Pi Kit)            |                                        | 96.65 |             |
+#+TBLFM: @12$3=vsum(@2$3..@11$3)  
+** Notes on power
+   Raspberry Pi is not designed for very low power operations and has no
+   suspend/sleep mode. An alarm clock does nothing most of the time! So
+   there is clearly a mismatch, but well, that is the board that I had to
+   recycle...
+
+   Reading about the Pi, I found that the only significant power draw gain
+   you can get is by disabling the Ethernet port (powered by the USB bus,
+   so you loose this one too).
+
+   Powering down the USB bus is a little bit tricky since the alarm clock
+   program is launched at boot (~/etc/rc.local~), and you want to avoid a
+   Pi that disable automatically its network and USB every-time you boot
+   it!  After some experimentation, I found an satisfying way to put this
+   in place. When the alarm clock program is launched, only if there is no
+   network cable detected, and that the toggle switch is in alarm mode,
+   the USB bus is de-powered. This leaves a double security to be able to
+   access your board when something goes wrong (beside re-flashing;-).
+
+   Below are the numbers I obtained:
+   | Mode                                     | Consumption (A) |
+   |------------------------------------------+----------------|
+   | Pi connected to local network            |           0.44 |
+   | Pi without network cable, but USB bus on |           0.37 |
+   | Pi without network cable, USB bus off    |           0.22 |
+   
+   So there is definitely a nice gain by powering off the USB bus. Look at the
+   file ~disableUsbBusTest.bash~ if you want to experiment yourself.
+   
+   I also turn off the HDMI output in ~/etc/rc.local~, which gain about
+   20mA:
+#+BEGIN_SRC bash
+tvservice -o
+#+END_SRC
