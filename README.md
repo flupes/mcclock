@@ -3,4 +3,4 @@ mcclock
 
 Minecraft Jukebox Alarm Clock
 
-See readme.org for more details.
+See [readme.org](readme.org) for more details.
