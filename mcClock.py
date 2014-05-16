@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python -u 
 
 # Hardcode some module path to simplify
 import sys
@@ -21,6 +21,7 @@ from Adafruit_7Segment import SevenSegment
 import glob
 import time
 import datetime
+import commands
 import random
 
 # Initialize the 7 segment display
@@ -44,13 +45,13 @@ buttons = {
 
 # Time and song to wake up for each day of the week (0=Monday)
 wakeup = [
-    (datetime.time(7,20), "Dragons.mp3"),
-    (datetime.time(6,50), "Emeralds.mp3"),
-    (datetime.time(7,20), "FallenKingdom.mp3"),
-    (datetime.time(7,20), "MiningOres.mp3"),
-    (datetime.time(7,25), "NewWorld.mp3"),
+    (datetime.time(7,40), "Dragons.mp3"),
+    (datetime.time(7,40), "Emeralds.mp3"),
+    (datetime.time(7,40), "FallenKingdom.mp3"),
+    (datetime.time(7,40), "MiningOres.mp3"),
+    (datetime.time(7,40), "NewWorld.mp3"),
     (datetime.time(9,00), "Emeralds.mp3"),
-    (datetime.time(23,38), "FallenKingdom.mp3")
+    (datetime.time(9,00), "FallenKingdom.mp3")
     ]
 
 tformat='12h'
@@ -81,6 +82,38 @@ enablePin = None
 for p in buttons :
     if buttons[p] == "ENABLE" :
         enablePin = p
+
+# Identify if a network cable is plugged or not
+netCablePlugged = True
+checkCableCmd = 'ip link show | grep eth0'
+cmdOutput = commands.getoutput(checkCableCmd)
+try:
+    foundAt = cmdOutput.index('LOWER_UP')
+except ValueError:
+    print "cable unplugged"
+    netCablePlugged = False
+else:
+    print "cable plugged"
+
+def powerUsbBus(state):
+    if state :
+        flag = '0x1'
+        print("Turning the USB bus ON")
+    else :
+        flag = '0x0'
+        print("Turning the USB bus OFF")
+    powerUsbBusCmd = 'echo ' + flag + ' /sys/devices/platform/bcm2708_usb/buspower'
+    cmdOutput = commands.getoutput(powerUsbBusCmd)    
+    #print "should have executed the following command if not too shy:"
+    #print powerUsbBusCmd
+    
+switchUsbBus = False
+if not netCablePlugged and not GPIO.input(enablePin) :
+    # We allow ourself to power off the USB bus (and network)
+    # to minimize power
+    switchUsbBus = True
+    print("Will use low power mode by turning OFF the USB bus when not required")
+    powerUsbBus(False)
 
 # Callback when tactile switch is pressed
 def button_callback(channel):
@@ -220,4 +253,8 @@ while True:
         newEnableState = False
         toggle_enabled()
     time.sleep(0.5)
+
+# If we had an exit condition, we could restore the USB bus power,
+# which would reduce the risk of hot reboot...
+powerUsbBus(True)
 
