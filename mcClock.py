@@ -50,8 +50,8 @@ wakeup = [
     (datetime.time(7,40), "FallenKingdom.mp3"),
     (datetime.time(7,40), "MiningOres.mp3"),
     (datetime.time(7,40), "NewWorld.mp3"),
-    (datetime.time(9,00), "Emeralds.mp3"),
-    (datetime.time(9,00), "FallenKingdom.mp3")
+    (datetime.time(9,00), "TakeBackTheNight.mp3"),
+    (datetime.time(9,00), "CreepersGonnaCreep.mp3")
     ]
 
 tformat='12h'
@@ -198,11 +198,14 @@ else:
     print("Will use regular power mode (USB bus on)")
 
 def play_alarm(day):
-    s = musicdir+"/"+wakeup[day][1]
+    wakeupSongs = []
     pl = list(songs)
-    pl.remove(s)
+    for d in wakeup:
+        s = musicdir+"/"+d[1]
+        wakeupSongs.append(s)
+        pl.remove(s)
     random.shuffle(pl)
-    pl.insert(0, s)
+    pl.insert(0, wakeupSongs[day])
     print("play list for day "+str(day)+":")
     print(pl)
     mediaList = vlc.MediaList(pl)
