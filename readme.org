@@ -4,6 +4,10 @@
    An fun alarm clock for a 9 year old. It plays Minecraft songs for
    wakeup. It can also be used as a real jukebox, by moving forwards and
    backwards though the list of songs.
+#+CAPTION: MC Alarm Clock in function
+#+ATTR_HTML: width="50%"
+[[./jukebox.jpg]]
+
 ** Development
    I recently bought a Raspberry Pi for my son hoping to divert him from
    playing Minecraft and try programming instead. He already had done a
