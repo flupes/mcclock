@@ -1,7 +1,7 @@
 
 * Minecraft Jukebox Alarm Clock
 ** Concept
-   An fun alarm clock for a 9 year old. It plays Minecraft songs for
+   A fun alarm clock for a 9 year old. It plays Minecraft songs for
    wakeup. It can also be used as a real jukebox, by moving forwards and
    backwards though the list of songs.
 #+CAPTION: MC Alarm Clock in function
