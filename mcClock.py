@@ -28,7 +28,9 @@ import random
 segment = SevenSegment(address=0x70)
 
 # Set the default brightness
-segment.disp.setBrightness(4)
+darkMode = False
+manualBrightness = 8
+segment.disp.setBrightness(manualBrightness)
 
 # Use BMC numbering
 GPIO.setmode(GPIO.BCM)
@@ -42,6 +44,8 @@ buttons = {
     22 : "DOWN",
     18 : "ENABLE",
 }
+
+lightSensorPin = 25
 
 # Time and song to wake up for each day of the week (0=Monday)
 wakeup = [
@@ -108,19 +112,24 @@ def powerUsbBus(state):
     
 # Callback when tactile switch is pressed
 def button_callback(channel):
+    global darkMode
+    global manualBrightness
     if GPIO.input(enablePin) == True and mlplayer.is_playing() == False :
         # Alarm mode
-        brightness = segment.disp.getBrightness()
-        if buttons[channel] == "UP" :
-            if brightness < 15 :
-                brightness = brightness + 1
-                segment.disp.setBrightness(brightness)
-            print("brightness="+str(brightness))
-        elif buttons[channel] == "DOWN" :
-            if brightness > 0 :
-                brightness = brightness - 1
-                segment.disp.setBrightness(brightness)
-            print("brightness="+str(brightness))
+        # This is a function added to the library, let's not use it
+        #brightness = segment.disp.getBrightness()
+        if darkMode == False :
+            # Only control brightness when not in the dark
+            if buttons[channel] == "UP" :
+                if manualBrightness < 15 :
+                    manualBrightness = manualBrightness + 1
+                    segment.disp.setBrightness(manualBrightness)
+                    print("brightness="+str(manualBrightness))
+            elif buttons[channel] == "DOWN" :
+                if manualBrightness > 0 :
+                    manualBrightness = manualBrightness - 1
+                    segment.disp.setBrightness(manualBrightness)
+                    print("brightness="+str(manualBrightness))
     else :
         # Player mode
         if buttons[channel] == "SET" :
@@ -197,6 +206,9 @@ if not netCablePlugged and GPIO.input(enablePin) :
 else:
     print("Will use regular power mode (USB bus on)")
 
+# Initialize the light sensor input
+GPIO.setup(lightSensorPin, GPIO.IN)
+
 def play_alarm(day):
     wakeupSongs = []
     pl = list(songs)
@@ -247,10 +259,24 @@ def update_clock():
         currentDay = now.day
         ringedToday = False
 
+def check_lighting():
+    global darkMode
+    if GPIO.input(lightSensorPin) == True:
+        print("DARK")
+        if darkMode == False:
+            segment.disp.setBrightness(0)
+            darkMode = True
+    else:
+        print("LIGHT")
+        if darkMode == True:
+            segment.disp.setBrightness(manualBrightness)
+            darkMode = False
+
 # Main loop (now run at 2Hz: does not seem to consume more CPU and allow a quicker
 # detection of the enable button
 while True:
     update_clock()
+    check_lighting()
     if newEnableState:
         newEnableState = False
         toggle_enabled()
