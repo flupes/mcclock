@@ -31,6 +31,7 @@ segment = SevenSegment(address=0x70)
 darkMode = False
 manualBrightness = 8
 segment.disp.setBrightness(manualBrightness)
+print("Stating with LIGHT at "+time.strftime("%Y-%m-%d %H:%M:%S"))
 
 # Use BMC numbering
 GPIO.setmode(GPIO.BCM)
@@ -262,15 +263,15 @@ def update_clock():
 def check_lighting():
     global darkMode
     if GPIO.input(lightSensorPin) == True:
-        print("DARK")
         if darkMode == False:
             segment.disp.setBrightness(0)
             darkMode = True
+            print(time.strftime("%Y-%m-%d %H:%M:%S")+" -> DARK")
     else:
-        print("LIGHT")
         if darkMode == True:
             segment.disp.setBrightness(manualBrightness)
             darkMode = False
+            print(time.strftime("%Y-%m-%d %H:%M:%S")+" -> LIGHT")
 
 # Main loop (now run at 2Hz: does not seem to consume more CPU and allow a quicker
 # detection of the enable button
