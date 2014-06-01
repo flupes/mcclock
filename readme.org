@@ -1,33 +1,38 @@
 
 * Minecraft Jukebox Alarm Clock
 ** Concept
-   An fun alarm clock for a 9 year old. It plays Minecraft songs for
+   A fun alarm clock for a 9 year old. It plays Minecraft songs for
    wakeup. It can also be used as a real jukebox, by moving forwards and
    backwards though the list of songs.
+#+CAPTION: MC Alarm Clock in function
+#+ATTR_HTML: width="50%"
+[[./jukebox.jpg]]
+
 ** Development
    I recently bought a Raspberry Pi for my son hoping to divert him from
-   playing Minecraft and try programming. He already had done a little
-   bit of scratch, and I thought the Minecraft API would be very exciting
-   for him... All wrong: the limited version of Minecraft on the Pi as no
-   appeal compared to the full fledge version on a laptop. In addition he
-   is simply not ready to program.
+   playing Minecraft and try programming instead. He already had done a
+   little bit of Scratch, and I thought the Minecraft API would be very
+   exciting for him... All wrong: the limited version of Minecraft on the
+   Pi as no appeal compared to the full fledged version on a laptop. In
+   addition he is simply not ready to program.
 
-   So I have now a Pi that I will probably not use (I prefer the
-   BeagleBone Black) and a very nice book for kids: "Adventures in
-   Raspberry Pi" by Carrie Anne Philbin. Well, by adding a few components
-   to my Pi kit, we can construct something useful for a nine year
-   old. He will not do the programming for it, but at least he will help
-   during the building process and understand a little bit the
-   capabilities of hardware mixed with software.
+   I also acquired a nice book for kids: "Adventures in Raspberry Pi" by
+   Carrie Anne Philbin. The book did not help program (yet;-), but at
+   least provided an idea to recycle the Pi. By adding a few components to
+   the Pi kit (I already had a GPIO cable, protoboard, etc.), we can
+   construct something useful for a nine year old. He will not do the
+   programming for it, but at least he will help during the building
+   process and understand a little bit the capabilities of hardware mixed
+   with software.
 
-   My son help with the initial design of the box (finding the right
+   My son helped with the initial design of the box (finding the right
    size, laying out the components), he soldered most of the components
-   (he really enjoy this part), and kept complaining that I was spending
+   (he always enjoy soldering), and kept complaining that I was spending
    too much time on the cardboard part (not so easy to build a box;-)
 
-   As usual, I found that the most difficult --and boring-- aspect is to
-   create a simple user interface. The most basic interaction always
-   require at least a few buttons, and they are a pain to integrate.
+   As usual, I found that one difficult aspect is to create a simple user
+   interface. The most basic interaction always require at least a few
+   buttons, and they are a pain to integrate.
 
    Well, time will tell us if this project is a success or not!
 ** BOM
@@ -45,6 +50,7 @@
 | Box                               | cardboard from and old big box         |     0 |             |
 |-----------------------------------+----------------------------------------+-------+-------------|
 | Total (include Pi Kit)            |                                        | 96.65 |             |
+| Price for the jukebox only        |                                        |       |       27.85 |
 #+TBLFM: @12$3=vsum(@2$3..@11$3)  
 ** Notes on power
    Raspberry Pi is not designed for very low power operations and has no
@@ -58,10 +64,10 @@
 
    Powering down the USB bus is a little bit tricky since the alarm clock
    program is launched at boot (~/etc/rc.local~), and you want to avoid a
-   Pi that disable automatically its network and USB every-time you boot
+   Pi that disables automatically its network and USB every-time you boot
    it!  After some experimentation, I found an satisfying way to put this
-   in place. When the alarm clock program is launched, only if there is no
-   network cable detected, and that the toggle switch is in alarm mode,
+   in place. When the alarm clock program is launched, only if 1) there is
+   no network cable detected, and 2) the toggle switch is in alarm mode,
    the USB bus is de-powered. This leaves a double security to be able to
    access your board when something goes wrong (beside re-flashing;-).
 
@@ -80,3 +86,12 @@
 #+BEGIN_SRC bash
 tvservice -o
 #+END_SRC
+** Note on price
+   This is not a cheep project if you want to replicate exactly. Howver my
+   excuse is that the Pi and its accessories would have gone unused
+   otherwise. I only added $28 to the previous failed project (Pi computer
+   for kid).
+
+   Starting from scratch, it would be probably preferable to use an old
+   iPod and an Arduino type microcontroller (which also would bring the
+   power draw down).
