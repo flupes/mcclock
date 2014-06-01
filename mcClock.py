@@ -204,6 +204,9 @@ if not netCablePlugged and GPIO.input(enablePin) :
     # to minimize power
     print("Will use low power mode by turning OFF the USB bus when not required")
     powerUsbBus(False)
+    # Turn off the display too
+    cmdOutput = commands.getoutput("tvservice -o")    
+    print("turning off tvservice returned:  "+cmdOutput)
 else:
     print("Will use regular power mode (USB bus on)")
 
