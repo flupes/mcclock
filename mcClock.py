@@ -48,13 +48,16 @@ buttons = {
 
 lightSensorPin = 25
 
+# Play each day of the week a predetermined song or not
+classicSongMode = False
+
 # Time and song to wake up for each day of the week (0=Monday)
 wakeup = [
-    (datetime.time(7,40), "Dragons.mp3"),
-    (datetime.time(7,40), "Emeralds.mp3"),
-    (datetime.time(7,40), "FallenKingdom.mp3"),
-    (datetime.time(7,40), "MiningOres.mp3"),
-    (datetime.time(7,40), "NewWorld.mp3"),
+    (datetime.time(7,30), "Dragons.mp3"),
+    (datetime.time(7,30), "Emeralds.mp3"),
+    (datetime.time(7,30), "FallenKingdom.mp3"),
+    (datetime.time(7,30), "MiningOres.mp3"),
+    (datetime.time(7,30), "NewWorld.mp3"),
     (datetime.time(9,00), "TakeBackTheNight.mp3"),
     (datetime.time(9,00), "CreepersGonnaCreep.mp3")
     ]
@@ -131,6 +134,11 @@ def button_callback(channel):
                     manualBrightness = manualBrightness - 1
                     segment.disp.setBrightness(manualBrightness)
                     print("brightness="+str(manualBrightness))
+        # Debug mode
+        #if buttons[channel] == "SET" :
+        #    print("Try the alarm...")
+        #    ringedToday = False
+        #    play_alarm(1)
     else :
         # Player mode
         if buttons[channel] == "SET" :
@@ -214,15 +222,22 @@ else:
 GPIO.setup(lightSensorPin, GPIO.IN)
 
 def play_alarm(day):
-    wakeupSongs = []
-    pl = list(songs)
-    for d in wakeup:
-        s = musicdir+"/"+d[1]
-        wakeupSongs.append(s)
-        pl.remove(s)
-    random.shuffle(pl)
-    pl.insert(0, wakeupSongs[day])
-    print("play list for day "+str(day)+":")
+    if classicSongMode :
+        # Version with defined songs for each day
+        wakeupSongs = []
+        pl = list(songs)
+        for d in wakeup:
+            s = musicdir+"/"+d[1]
+            wakeupSongs.append(s)
+            pl.remove(s)
+        random.shuffle(pl)
+        pl.insert(0, wakeupSongs[day])
+    else :
+        # Pick 5 random songs from the list
+        pl = list(songs)
+        random.shuffle(pl)
+        pl = pl[0:5]
+    print("classic play list for day "+str(day)+":")
     print(pl)
     mediaList = vlc.MediaList(pl)
     mlplayer.set_media_list(mediaList)
