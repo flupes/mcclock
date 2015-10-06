@@ -146,6 +146,9 @@ def process_enable_switch():
 def process_tactile_events():
     global manualBrightness
 
+    left_long = False
+    right_long = False
+
     while events_queue.empty() == False :
         e = events_queue.get_nowait()
         b = buttons[e[0]]
@@ -196,14 +199,25 @@ def process_tactile_events():
                     volume = volume - 10
                     player.audio_set_volume(volume)
                     print("volume="+str(volume))
-            
+
+        elif b == "LEFT" and e[1] == RELEASED_LONG :
+            if clockMode == MODE_ALARM :
+                left_long = True
+
+        elif b == "RIGHT" and e[1] == RELEASED_LONG :
+            if clockMode == MODE_ALARM :
+                right_long = True
+
         # Debug mode
         #if buttons[channel] == "SET" :
         #    print("Try the alarm...")
         #    ringedToday = False
         #    play_alarm(1)
 
-    return True
+    if left_long and right_long :
+        return False
+    else :
+        return True
 
 
 # Callback when the toggle switch change state : not used!
@@ -264,6 +278,13 @@ def play_alarm(day):
     ringedToday = True
 
 
+def shutdown_clock():
+    segment.writeDigitRaw(0, 0x3F)
+    segment.writeDigitRaw(1, 0x71)
+    segment.writeDigitRaw(3, 0x71)
+    segment.writeDigitRaw(4, 0x40)
+    segment.setColon(False)
+
 def update_clock():
     now = datetime.datetime.now()
     hour = now.hour
@@ -312,7 +333,7 @@ def check_lighting():
             print(time.strftime("%Y-%m-%d %H:%M:%S")+" -> LIGHT")
 
 
-def monitor_buttons():
+def monitor_buttons(e):
     states = []
     back_counts = []
     toggle_counts = []
@@ -323,7 +344,7 @@ def monitor_buttons():
         toggle_counts.append( 0 )
         clocks.append( time.time() )
     debounce = 4
-    while True:
+    while not e.isSet():
         b = 0
         for pin in buttons :
             newstate = GPIO.input(pin)
@@ -344,7 +365,7 @@ def monitor_buttons():
                             print "Queue full : just skip event!"
                     else :
                         delay = time.time() - clocks[b]
-                        if delay < 1 :
+                        if delay < 3 :
                             events_queue.put_nowait( (pin, RELEASED_SHORT) )
                         else :
                             events_queue.put_nowait( (pin, RELEASED_LONG) )
@@ -361,7 +382,8 @@ def monitor_buttons():
                 
             b += 1
         # end for pin
-        time.sleep(0.01)
+        e.wait(0.01)
+        #time.sleep(0.01)
     # end while True
 
 #
@@ -369,8 +391,9 @@ def monitor_buttons():
 #
 
 # start monitoring tactiles switches in a different thread
-t = threading.Thread(target=monitor_buttons)
-t.deamon = True
+e = threading.Event()
+t = threading.Thread(name='monitor', target=monitor_buttons, args=(e,))
+#t.deamon = True
 t.start()
 
 # add an event detection on the enablePin
@@ -387,7 +410,17 @@ while up:
     up = process_tactile_events()
     time.sleep(0.5)
 
+
+shutdown_clock()
+
+print "finishing mcClock."
+e.set()
+
+print "final event sent."
+t.join()
+print "Done."
+
 # If we had an exit condition, we could restore the USB bus power,
 # which would reduce the risk of hot reboot...
-powerUsbBus(True)
+#powerUsbBus(True)
 
