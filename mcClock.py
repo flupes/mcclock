@@ -24,6 +24,9 @@ import datetime
 import commands
 import random
 
+import threading
+import Queue
+
 # Initialize the 7 segment display
 segment = SevenSegment(address=0x70)
 
@@ -43,9 +46,26 @@ buttons = {
     27 : "RIGHT",
     23 : "UP",
     22 : "DOWN",
-    18 : "ENABLE",
 }
 
+# ON/OFF switch pin
+enablePin = 18
+
+# queue for the tactile switches events
+events_queue = Queue.Queue(32)
+# some constants for events (waiting to learn enums)
+PRESSED = 1
+RELEASED_SHORT = 2
+RELEASED_LONG = 3
+
+MODE_ALARM = 1
+MODE_PLAYER = 2
+MODE_SHUTDOWN = 3
+MODE_WIFIUP = 4
+MODE_WIFIDOWN = 5
+clockMode = MODE_ALARM
+
+# input of the light sensor
 lightSensorPin = 25
 
 # Play each day of the week a predetermined song or not
@@ -53,11 +73,11 @@ classicSongMode = False
 
 # Time and song to wake up for each day of the week (0=Monday)
 wakeup = [
-    (datetime.time(7,30), "Dragons.mp3"),
-    (datetime.time(7,30), "Emeralds.mp3"),
-    (datetime.time(7,30), "FallenKingdom.mp3"),
-    (datetime.time(7,30), "MiningOres.mp3"),
-    (datetime.time(7,30), "NewWorld.mp3"),
+    (datetime.time(7,20), "Dragons.mp3"),
+    (datetime.time(7,20), "Emeralds.mp3"),
+    (datetime.time(7,20), "FallenKingdom.mp3"),
+    (datetime.time(7,20), "MiningOres.mp3"),
+    (datetime.time(7,20), "NewWorld.mp3"),
     (datetime.time(9,00), "TakeBackTheNight.mp3"),
     (datetime.time(9,00), "CreepersGonnaCreep.mp3")
     ]
@@ -71,25 +91,19 @@ else :
     ringedToday = False
 
 currentDay = now.day
-newEnableState = False
 
 # Configure a VLC player
 player = vlc.MediaPlayer()
 player.audio_set_volume(50)
 
 # List of songs
-musicdir = '/home/pi/Music/Minecraft'
+musicdir = '/home/pi/Music/AlarmClockHipHop'
 songs = glob.glob(musicdir+'/*.mp3')
 
 # MediaListPlayer
 mlplayer = vlc.MediaListPlayer()
 mlplayer.set_media_player(player)
 
-# keep hold on the enable pin
-enablePin = None
-for p in buttons :
-    if buttons[p] == "ENABLE" :
-        enablePin = p
 
 # Identify if a network cable is plugged or not
 netCablePlugged = True
@@ -114,72 +128,85 @@ def powerUsbBus(state):
     cmdOutput = commands.getoutput(powerUsbBusCmd)    
     print("Result from: "+powerUsbBusCmd+" -> "+cmdOutput)
     
-# Callback when tactile switch is pressed
-def button_callback(channel):
-    global darkMode
+
+def process_enable_switch():
+    global clockMode
+    if GPIO.input(enablePin) == True :
+        clockMode = MODE_ALARM
+        mlplayer.stop()
+        print("Alarm enabled -> stop playing song (clockMode="+str(clockMode)+")")
+    else :
+        clockMode = MODE_PLAYER
+        mediaList = vlc.MediaList(songs)
+        mlplayer.set_media_list(mediaList)
+        print("Alarm disabled -> reset playing list (clockMode="+str(clockMode)+")")
+
+
+# process tactile events
+def process_tactile_events():
     global manualBrightness
-    if GPIO.input(enablePin) == True and mlplayer.is_playing() == False :
-        # Alarm mode
-        # This is a function added to the library, let's not use it
-        #brightness = segment.disp.getBrightness()
-        if darkMode == False :
-            # Only control brightness when not in the dark
-            if buttons[channel] == "UP" :
+
+    while events_queue.empty() == False :
+        e = events_queue.get_nowait()
+        b = buttons[e[0]]
+
+        print("process event for switch " + b + " -> " + str(e[1]) + " (mode=" + str(clockMode)+")")
+
+        if b == "SET" and e[1] == PRESSED :
+            if clockMode == MODE_PLAYER :
+                if player.is_playing() :
+                    mlplayer.pause()
+                    print("pausing player")
+                else :
+                    mlplayer.play()
+                    print("start to play song: "+player.get_media().get_mrl())
+
+        elif b == "LEFT" and e[1] == PRESSED :
+            if clockMode == MODE_PLAYER :
+                mlplayer.previous()
+                print("move to previous song: "+player.get_media().get_mrl())
+
+        elif b == "RIGHT" and e[1] == PRESSED :
+            if clockMode == MODE_PLAYER :
+                mlplayer.next()
+                print("move to next song: "+player.get_media().get_mrl())
+
+        elif b == "UP" and e[1] == PRESSED :
+            if clockMode == MODE_ALARM and darkMode == False :
                 if manualBrightness < 15 :
                     manualBrightness = manualBrightness + 1
                     segment.disp.setBrightness(manualBrightness)
                     print("brightness="+str(manualBrightness))
-            elif buttons[channel] == "DOWN" :
+            elif clockMode == MODE_PLAYER :
+                volume = player.audio_get_volume()
+                if volume < 91 :
+                    volume = volume + 10
+                    player.audio_set_volume(volume)
+                    print("volume="+str(volume))
+
+        elif b == "DOWN" and e[1] == PRESSED :
+            if clockMode == MODE_ALARM and darkMode == False :
                 if manualBrightness > 0 :
                     manualBrightness = manualBrightness - 1
                     segment.disp.setBrightness(manualBrightness)
                     print("brightness="+str(manualBrightness))
+            elif clockMode == MODE_PLAYER :
+                volume = player.audio_get_volume()
+                if volume > 9 :
+                    volume = volume - 10
+                    player.audio_set_volume(volume)
+                    print("volume="+str(volume))
+            
         # Debug mode
         #if buttons[channel] == "SET" :
         #    print("Try the alarm...")
         #    ringedToday = False
         #    play_alarm(1)
-    else :
-        # Player mode
-        if buttons[channel] == "SET" :
-            set_button = channel
-            set_time = time.time()
-            if player.is_playing() :
-                mlplayer.pause()
-                print("pausing player")
-            else :
-                mlplayer.play()
-                print("start to play song: "+player.get_media().get_mrl())
-        elif buttons[channel] == "UP" :
-            volume = player.audio_get_volume()
-            if volume < 91 :
-                volume = volume + 10
-                player.audio_set_volume(volume)
-                print("volume="+str(volume))
-        elif buttons[channel] == "DOWN" :
-            volume = player.audio_get_volume()
-            if volume > 9 :
-                volume = volume - 10
-                player.audio_set_volume(volume)
-            print("volume="+str(volume))
-        elif buttons[channel] == "LEFT" :
-            mlplayer.previous()
-            print("move to previous song: "+player.get_media().get_mrl())
-        elif buttons[channel] == "RIGHT" :
-            mlplayer.next()
-            print("move to next song: "+player.get_media().get_mrl())
 
-def toggle_enabled():
-    if GPIO.input(enablePin) == True :
-        mlplayer.stop()
-        print("Alarm enabled -> stop playing song")
-    else :
-        mediaList = vlc.MediaList(songs)
-        mlplayer.set_media_list(mediaList)
-        print("Alarm disabled -> reset playing list to:")
-        print(songs)
+    return True
 
-# Callback when the toggle switch change state
+
+# Callback when the toggle switch change state : not used!
 def toggle_callback(channel):
     print("enablePin = " + str(enablePin) + " -> " + str(GPIO.input(enablePin)))
     # For some reason, the imput state is wrong in this callback: it renders
@@ -187,27 +214,20 @@ def toggle_callback(channel):
     # out of 10 the state returned is True not matter what the real state is...
     # Let's then just check periodically the state in the main loop
     # toggle_enable()
-    global newEnableState
-    newEnableState = True
+
+
+# Initialize the light sensor input
+GPIO.setup(lightSensorPin, GPIO.IN)
 
 # Initialize the tactile switches inputs and callback
+GPIO.setup(enablePin, GPIO.IN)
 for pin in buttons:
-    print("configure button "+buttons[pin]+" on pin "+str(pin))
     GPIO.setup(pin, GPIO.IN)
-    if pin == enablePin :
-        # RPIO.add_interrupt_callback(pin, edge='both', callback=toggle_callback, \
-            # debounce_timeout_ms=400)
-        GPIO.add_event_detect(pin, GPIO.BOTH, callback=toggle_callback, bouncetime=400)
-    else :
-        # RPIO.add_interrupt_callback(pin, edge='falling', callback=button_callback, \
-            # debounce_timeout_ms=200)
-        GPIO.add_event_detect(pin, GPIO.FALLING, callback=button_callback, bouncetime=200)
 
-if GPIO.input(enablePin) == False :
-    mediaList = vlc.MediaList(songs)
-    mlplayer.set_media_list(mediaList)
+process_enable_switch()
 
-if not netCablePlugged and GPIO.input(enablePin) :
+# Get in low power mode if no ethernet cable and alarm mode
+if not netCablePlugged and clockMode == MODE_ALARM :
     # We allow ourself to power off the USB bus (and network)
     # to minimize power
     print("Will use low power mode by turning OFF the USB bus when not required")
@@ -218,8 +238,6 @@ if not netCablePlugged and GPIO.input(enablePin) :
 else:
     print("Will use regular power mode (USB bus on)")
 
-# Initialize the light sensor input
-GPIO.setup(lightSensorPin, GPIO.IN)
 
 def play_alarm(day):
     if classicSongMode :
@@ -244,6 +262,7 @@ def play_alarm(day):
     mlplayer.play()
     global ringedToday
     ringedToday = True
+
 
 def update_clock():
     now = datetime.datetime.now()
@@ -278,6 +297,7 @@ def update_clock():
         currentDay = now.day
         ringedToday = False
 
+
 def check_lighting():
     global darkMode
     if GPIO.input(lightSensorPin) == True:
@@ -291,14 +311,80 @@ def check_lighting():
             darkMode = False
             print(time.strftime("%Y-%m-%d %H:%M:%S")+" -> LIGHT")
 
+
+def monitor_buttons():
+    states = []
+    back_counts = []
+    toggle_counts = []
+    clocks = []
+    for pin in buttons :
+        states.append( GPIO.input(pin) )
+        back_counts.append( 0 )
+        toggle_counts.append( 0 )
+        clocks.append( time.time() )
+    debounce = 4
+    while True:
+        b = 0
+        for pin in buttons :
+            newstate = GPIO.input(pin)
+            if newstate != states[b] :
+                if toggle_counts[b] == 0 :
+                    back_counts[b] = 0
+                    
+                if toggle_counts[b] == debounce :
+                    states[b] = newstate
+                    back_counts[b] = 0
+                    toggle_counts[b] = 0
+                    
+                    if newstate == False :
+                        clocks[b] = time.time()
+                        try :
+                            events_queue.put_nowait( (pin, PRESSED) )
+                        except :
+                            print "Queue full : just skip event!"
+                    else :
+                        delay = time.time() - clocks[b]
+                        if delay < 1 :
+                            events_queue.put_nowait( (pin, RELEASED_SHORT) )
+                        else :
+                            events_queue.put_nowait( (pin, RELEASED_LONG) )
+                    
+                else : 
+                    toggle_counts[b] += 1
+            else :
+                if toggle_counts[b] > 0 :
+                    if back_counts[b] < debounce : 
+                        back_counts[b] += 1
+
+            if back_counts[b] == debounce :
+                toggle_counts[b] = 0
+                
+            b += 1
+        # end for pin
+        time.sleep(0.01)
+    # end while True
+
+#
+# Main Program
+#
+
+# start monitoring tactiles switches in a different thread
+t = threading.Thread(target=monitor_buttons)
+t.deamon = True
+t.start()
+
+# add an event detection on the enablePin
+GPIO.add_event_detect(enablePin, GPIO.BOTH, callback=toggle_callback, bouncetime=100)
+
+up = True
 # Main loop (now run at 2Hz: does not seem to consume more CPU and allow a quicker
 # detection of the enable button
-while True:
+while up:
     update_clock()
     check_lighting()
-    if newEnableState:
-        newEnableState = False
-        toggle_enabled()
+    if GPIO.event_detected(enablePin) :
+        process_enable_switch()
+    up = process_tactile_events()
     time.sleep(0.5)
 
 # If we had an exit condition, we could restore the USB bus power,
