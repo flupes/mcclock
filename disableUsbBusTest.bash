@@ -17,6 +17,9 @@
 lf=/tmp/usb.log
 echo "test disabling usb (and thus network) bus" > ${lf}
 
+oldusb=/sys/devices/platform/bcm2708_usb/buspower
+newusb=/sys/devices/platform/soc/20980000.usb/buspower
+
 msg()
 {
     now=`date +'%Y-%m-%d %H:%M:%S'`
@@ -24,16 +27,17 @@ msg()
 }
 
 msg "disable network"
-ifdown eth0
+#ifdown eth0
+/etc/init.d/networking stop
 sleep 1
 
 msg "power off usb"
-echo "0x0" > /sys/devices/platform/bcm2708_usb/buspower
+echo "0x0" > $newusb
 
 msg "sleep for 15s"
 sleep 15
 
-msg "play some musing"
+msg "play some music"
 # Use an existing file to play
 omxplayer /home/pi/Music/Various/Recusa.mp3 --pos 100 --vol -2000
 
@@ -41,9 +45,9 @@ msg "sleep for 15s again"
 sleep 15
 
 msg "power usb bus on"
-echo "0x1" > /sys/devices/platform/bcm2708_usb/buspower
+echo "0x1" > $newusb
 
 sleep 1
 msg "restore networking"
-ifup eth0
-
+#ifup eth0
+/etc/init.d/networking start
