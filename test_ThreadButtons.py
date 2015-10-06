@@ -27,25 +27,32 @@ GPIO.add_event_detect(enablePin, GPIO.BOTH, bouncetime=300)
 
 
 def monitor_buttons():
-    curr_states = {}
-    prev_states = {}
-    counts = {}
-    clocks = {}
+    states = []
+    back_counts = []
+    toggle_counts = []
+    clocks = []
     for pin in buttons :
-        curr_states[pin] = GPIO.input(pin)
-        prev_states[pin] = curr_states[pin]
-        counts[pin] = 0
-        clocks[pin] = time.time()
-    debounce = 5
+        states.append( GPIO.input(pin) )
+        back_counts.append( 0 )
+        toggle_counts.append( 0 )
+        clocks.append( time.time() )
+    debounce = 4
     while True:
+        b = 0
         for pin in buttons :
             newstate = GPIO.input(pin)
-            if newstate != curr_states[pin] :
-                if counts[pin] == debounce :
+            if newstate != states[b] :
+                if toggle_counts[b] == 0 :
+                    back_counts[b] = 0
+                    
+                if toggle_counts[b] == debounce :
                     print "Edge detected for channel " + str(pin)
-                    curr_states[pin] = newstate
+                    states[b] = newstate
+                    back_counts[b] = 0
+                    toggle_counts[b] = 0
+                    
                     if newstate == False :
-                        clocks[pin] = time.time()
+                        clocks[b] = time.time()
                         print "     button pressed"
                     else :
                         delay = time.time() - clocks[pin]
@@ -53,10 +60,21 @@ def monitor_buttons():
                             print "    button released after short press"
                         else :
                             print "    button released after long press"
-                    counts[pin] = 0
+                    
                 else : 
-                    counts[pin] += 1
+                    toggle_counts[b] += 1
+            else :
+                if toggle_counts[b] > 0 :
+                    if back_counts[b] < debounce : 
+                        back_counts[b] += 1
+
+            if back_counts[b] == debounce :
+                toggle_counts[b] = 0
+                
+            b += 1
+        # end for pin
         time.sleep(0.01)
+    # end while True
 
 t = threading.Thread(target=monitor_buttons)
 t.deamon = True
