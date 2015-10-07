@@ -90,6 +90,9 @@ if now.time() > wakeup[now.weekday()][0] :
 else :
     ringedToday = False
 
+msg_timestamp = time.time()
+msg_duration = 0
+
 currentDay = now.day
 
 # Configure a VLC player
@@ -105,27 +108,20 @@ mlplayer = vlc.MediaListPlayer()
 mlplayer.set_media_player(player)
 
 
-# Identify if a network cable is plugged or not
-netCablePlugged = True
-checkCableCmd = 'ip link show | grep eth0'
-cmdOutput = commands.getoutput(checkCableCmd)
-try:
-    foundAt = cmdOutput.index('LOWER_UP')
-except ValueError:
-    print "cable unplugged"
-    netCablePlugged = False
-else:
-    print "cable plugged"
-
 def powerUsbBus(state):
     if state :
-        flag = '0x1'
+        msg = [0x01, 0xC1, 0x00, 0x3E, 0x73]
         print("Turning the USB bus ON")
+        display_msg(msg, 6)
+        powerUsbBusCmd = basedir + "/mcclock/usbBusUp.bash"
+        cmdOutput = commands.getoutput(powerUsbBusCmd)
     else :
-        flag = '0x0'
+        msg = [0x01, 0xC1, 0x00, 0x3F, 0x3F]
+        display_msg(msg, 6)
         print("Turning the USB bus OFF")
-    powerUsbBusCmd = 'echo ' + flag + ' > /sys/devices/platform/bcm2708_usb/buspower'
-    cmdOutput = commands.getoutput(powerUsbBusCmd)    
+        powerUsbBusCmd = basedir + "/mcclock/usbBusDown.bash"
+        cmdOutput = commands.getoutput(powerUsbBusCmd)
+
     print("Result from: "+powerUsbBusCmd+" -> "+cmdOutput)
     
 
@@ -146,6 +142,7 @@ def process_enable_switch():
 def process_tactile_events():
     global manualBrightness
 
+    set_long = False
     left_long = False
     right_long = False
 
@@ -200,6 +197,10 @@ def process_tactile_events():
                     player.audio_set_volume(volume)
                     print("volume="+str(volume))
 
+        elif b == "SET" and e[1] == RELEASED_LONG :
+            if clockMode == MODE_ALARM :
+                set_long = True
+
         elif b == "LEFT" and e[1] == RELEASED_LONG :
             if clockMode == MODE_ALARM :
                 left_long = True
@@ -213,6 +214,12 @@ def process_tactile_events():
         #    print("Try the alarm...")
         #    ringedToday = False
         #    play_alarm(1)
+
+    if set_long and left_long :
+        powerUsbBus(False)
+
+    if set_long and right_long :
+        powerUsbBus(True)
 
     if left_long and right_long :
         return False
@@ -228,29 +235,6 @@ def toggle_callback(channel):
     # out of 10 the state returned is True not matter what the real state is...
     # Let's then just check periodically the state in the main loop
     # toggle_enable()
-
-
-# Initialize the light sensor input
-GPIO.setup(lightSensorPin, GPIO.IN)
-
-# Initialize the tactile switches inputs and callback
-GPIO.setup(enablePin, GPIO.IN)
-for pin in buttons:
-    GPIO.setup(pin, GPIO.IN)
-
-process_enable_switch()
-
-# Get in low power mode if no ethernet cable and alarm mode
-if not netCablePlugged and clockMode == MODE_ALARM :
-    # We allow ourself to power off the USB bus (and network)
-    # to minimize power
-    print("Will use low power mode by turning OFF the USB bus when not required")
-    powerUsbBus(False)
-    # Turn off the display too
-    cmdOutput = commands.getoutput("tvservice -o")    
-    print("turning off tvservice returned:  "+cmdOutput)
-else:
-    print("Will use regular power mode (USB bus on)")
 
 
 def play_alarm(day):
@@ -278,6 +262,15 @@ def play_alarm(day):
     ringedToday = True
 
 
+def display_msg(msg, delay):
+    global msg_timestamp
+    global msg_duration
+    for i in range(len(msg)) :
+        segment.writeDigitRaw(i, msg[i])
+    msg_timestamp = time.time()
+    msg_duration = delay
+
+
 def shutdown_clock():
     segment.writeDigitRaw(0, 0x3F)
     segment.writeDigitRaw(1, 0x71)
@@ -285,38 +278,41 @@ def shutdown_clock():
     segment.writeDigitRaw(4, 0x40)
     segment.setColon(False)
 
+
 def update_clock():
-    now = datetime.datetime.now()
-    hour = now.hour
-    minute = now.minute
-    second = now.second
-    # Switch 24h / 12h format
-    if tformat == '12h' and hour > 12 :
-        hour = hour - 12
-        dot = True
-    else:
-        dot = False
-    # Set hours
-    segment.writeDigit(0, int(hour / 10))     # Tens
-    segment.writeDigit(1, hour % 10, dot)     # Ones
-    # Set minutes
-    segment.writeDigit(3, int(minute / 10))   # Tens
-    # Ones and alarm enable (dot)
-    segment.writeDigit(4, minute % 10, GPIO.input(enablePin))
-    # Toggle color
-    segment.setColon(second % 2)              # Toggle colon at 1Hz
-    # Check if alarm is necessary
-    global ringedToday
-    if GPIO.input(enablePin) == True :
-        if not ringedToday :
-            day = now.weekday()
-            if now.time() > wakeup[day][0] :
-                play_alarm(day)
-    # Update alarm state
-    global currentDay
-    if currentDay != now.day :
-        currentDay = now.day
-        ringedToday = False
+    t = time.time()
+    if t > msg_timestamp + msg_duration :
+        now = datetime.datetime.now()    
+        hour = now.hour
+        minute = now.minute
+        second = now.second
+        # Switch 24h / 12h format
+        if tformat == '12h' and hour > 12 :
+            hour = hour - 12
+            dot = True
+        else:
+            dot = False
+        # Set hours
+        segment.writeDigit(0, int(hour / 10))     # Tens
+        segment.writeDigit(1, hour % 10, dot)     # Ones
+        # Set minutes
+        segment.writeDigit(3, int(minute / 10))   # Tens
+        # Ones and alarm enable (dot)
+        segment.writeDigit(4, minute % 10, GPIO.input(enablePin))
+        # Toggle color
+        segment.setColon(second % 2)              # Toggle colon at 1Hz
+        # Check if alarm is necessary
+        global ringedToday
+        if GPIO.input(enablePin) == True :
+            if not ringedToday :
+                day = now.weekday()
+                if now.time() > wakeup[day][0] :
+                    play_alarm(day)
+        # Update alarm state
+        global currentDay
+        if currentDay != now.day :
+            currentDay = now.day
+            ringedToday = False
 
 
 def check_lighting():
@@ -390,6 +386,44 @@ def monitor_buttons(e):
 # Main Program
 #
 
+# Initialize the light sensor input
+GPIO.setup(lightSensorPin, GPIO.IN)
+
+# Initialize the tactile switches inputs and callback
+GPIO.setup(enablePin, GPIO.IN)
+for pin in buttons:
+    GPIO.setup(pin, GPIO.IN)
+
+process_enable_switch()
+
+
+# Identify if a network cable is plugged or not
+netCablePlugged = True
+checkCableCmd = 'ip link show | grep eth0'
+cmdOutput = commands.getoutput(checkCableCmd)
+try:
+    foundAt = cmdOutput.index('LOWER_UP')
+except ValueError:
+    print "cable unplugged"
+    netCablePlugged = False
+else:
+    print "cable plugged"
+
+
+# Get in low power mode if no ethernet cable and alarm mode
+if not netCablePlugged and clockMode == MODE_ALARM :
+    # We allow ourself to power off the USB bus (and network)
+    # to minimize power
+    print("Will use low power mode by turning OFF the USB bus when not required")
+    powerUsbBus(False)
+    # Turn off the display too
+    cmdOutput = commands.getoutput("tvservice -o")    
+    print("turning off tvservice returned:  "+cmdOutput)
+else:
+    print("Will use regular power mode (USB bus on)")
+    display_msg([0x01, 0xC1, 0x00, 0x3E, 0x73], 5)
+
+
 # start monitoring tactiles switches in a different thread
 e = threading.Event()
 t = threading.Thread(name='monitor', target=monitor_buttons, args=(e,))
@@ -419,6 +453,9 @@ e.set()
 print "final event sent."
 t.join()
 print "Done."
+
+delayedShutdown = "sleep 3 && shutdown -h now &"
+commands.getoutput(delayedshutdown)
 
 # If we had an exit condition, we could restore the USB bus power,
 # which would reduce the risk of hot reboot...
