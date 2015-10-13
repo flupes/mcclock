@@ -47,22 +47,32 @@ buttons = {
     23 : "UP",
     22 : "DOWN",
 }
+modifierPin = 17
+maxRealPin = max(buttons.keys())
 
 # ON/OFF switch pin
 enablePin = 18
 
 # queue for the tactile switches events
 events_queue = Queue.Queue(32)
+
 # some constants for events (waiting to learn enums)
-PRESSED = 1
-RELEASED_SHORT = 2
-RELEASED_LONG = 3
+STATE_UP = 1
+STATE_DOWN = 2
+STATE_HOLD = 3
+STATE_PENDING_SHORT_RELEASE = 4
+STATE_PENDING_LONG_RELEASE = 5
+
+EVENT_PRESSED = 3
+EVENT_RELEASED_SHORT = 2
+EVENT_RELEASED_LONG = 1
 
 MODE_ALARM = 1
 MODE_PLAYER = 2
 MODE_SHUTDOWN = 3
 MODE_WIFIUP = 4
 MODE_WIFIDOWN = 5
+MODE_PANDORA = 6
 clockMode = MODE_ALARM
 
 # input of the light sensor
@@ -100,7 +110,7 @@ player = vlc.MediaPlayer()
 player.audio_set_volume(50)
 
 # List of songs
-musicdir = '/home/pi/Music/AlarmClockHipHop'
+musicdir = '/home/pi/Music/AlarmClock'
 songs = glob.glob(musicdir+'/*.mp3')
 
 # MediaListPlayer
@@ -141,6 +151,7 @@ def process_enable_switch():
 # process tactile events
 def process_tactile_events():
     global manualBrightness
+    global clockMode
 
     set_long = False
     left_long = False
@@ -148,12 +159,24 @@ def process_tactile_events():
 
     while events_queue.empty() == False :
         e = events_queue.get_nowait()
-        b = buttons[e[0]]
+        pin = e[1]
+        if pin > maxRealPin :
+            b=buttons[modifierPin]+"+"+buttons[pin-modifierPin]
+        else :
+            b = buttons[pin]
 
-        print("process event for switch " + b + " -> " + str(e[1]) + " (mode=" + str(clockMode)+")")
+        print("process event for switch " + b + " -> " + str(e[0]) + " (mode=" + str(clockMode)+")")
 
-        if b == "SET" and e[1] == PRESSED :
-            if clockMode == MODE_PLAYER :
+        if clockMode == MODE_PLAYER :
+
+            if b == "SET" and e[0] == EVENT_RELEASED_LONG :
+                mlplayer.stop()
+                clockMode = MODE_PANDORA
+                display_msg([0x73, 0x77, 0x00, 0x37, 0x3F], 9)
+                while events_queue.empty() == False :
+                    e = events_queue.get_nowait()
+
+            elif b == "SET" and e[0] == EVENT_RELEASED_SHORT :
                 if player.is_playing() :
                     mlplayer.pause()
                     print("pausing player")
@@ -161,65 +184,64 @@ def process_tactile_events():
                     mlplayer.play()
                     print("start to play song: "+player.get_media().get_mrl())
 
-        elif b == "LEFT" and e[1] == PRESSED :
-            if clockMode == MODE_PLAYER :
+            elif b == "LEFT" and e[0] == EVENT_RELEASED_SHORT :
                 mlplayer.previous()
                 print("move to previous song: "+player.get_media().get_mrl())
 
-        elif b == "RIGHT" and e[1] == PRESSED :
-            if clockMode == MODE_PLAYER :
+            elif b == "RIGHT" and e[0] == EVENT_RELEASED_SHORT :
                 mlplayer.next()
                 print("move to next song: "+player.get_media().get_mrl())
 
-        elif b == "UP" and e[1] == PRESSED :
-            if clockMode == MODE_ALARM and darkMode == False :
-                if manualBrightness < 15 :
-                    manualBrightness = manualBrightness + 1
-                    segment.disp.setBrightness(manualBrightness)
-                    print("brightness="+str(manualBrightness))
-            elif clockMode == MODE_PLAYER :
+            elif b == "UP" and e[0] == EVENT_RELEASED_SHORT :
                 volume = player.audio_get_volume()
                 if volume < 91 :
                     volume = volume + 10
                     player.audio_set_volume(volume)
                     print("volume="+str(volume))
 
-        elif b == "DOWN" and e[1] == PRESSED :
-            if clockMode == MODE_ALARM and darkMode == False :
-                if manualBrightness > 0 :
-                    manualBrightness = manualBrightness - 1
-                    segment.disp.setBrightness(manualBrightness)
-                    print("brightness="+str(manualBrightness))
-            elif clockMode == MODE_PLAYER :
+            elif b == "DOWN" and e[0] == EVENT_RELEASED_SHORT :
                 volume = player.audio_get_volume()
                 if volume > 9 :
                     volume = volume - 10
                     player.audio_set_volume(volume)
                     print("volume="+str(volume))
 
-        elif b == "SET" and e[1] == RELEASED_LONG :
-            if clockMode == MODE_ALARM :
-                set_long = True
+        elif clockMode == MODE_PANDORA :
+            if b == "SET" and e[0] == EVENT_RELEASED_LONG :
+                clockMode = MODE_PLAYER
+                display_msg([0x73, 0x38, 0x00, 0x77, 0x66], 9)
+                print "Switching to PLAYER mode"
+                while events_queue.empty() == False :
+                    e = events_queue.get_nowait()
 
-        elif b == "LEFT" and e[1] == RELEASED_LONG :
-            if clockMode == MODE_ALARM :
+
+        elif clockMode == MODE_ALARM :
+
+            if darkMode == False :
+                if b == "UP" and e[0] == EVENT_RELEASED_SHORT :
+                    if manualBrightness < 15 :
+                        manualBrightness = manualBrightness + 1
+                        segment.disp.setBrightness(manualBrightness)
+                        print("brightness="+str(manualBrightness))
+
+                elif b == "DOWN" and e[0] == EVENT_RELEASED_SHORT :
+                    if manualBrightness > 0 :
+                        manualBrightness = manualBrightness - 1
+                        segment.disp.setBrightness(manualBrightness)
+                        print("brightness="+str(manualBrightness))
+
+            if b == "SET+DOWN" and e[0] == EVENT_RELEASED_LONG :
+                powerUsbBus(False)
+
+            elif b == "SET+UP" and e[0] == EVENT_RELEASED_LONG :
+                powerUsbBus(True)
+
+            elif b == "LEFT" and e[0] == EVENT_RELEASED_LONG :
                 left_long = True
 
-        elif b == "RIGHT" and e[1] == RELEASED_LONG :
-            if clockMode == MODE_ALARM :
+            elif b == "RIGHT" and e[0] == EVENT_RELEASED_LONG :
                 right_long = True
 
-        # Debug mode
-        #if buttons[channel] == "SET" :
-        #    print("Try the alarm...")
-        #    ringedToday = False
-        #    play_alarm(1)
-
-    if set_long and left_long :
-        powerUsbBus(False)
-
-    if set_long and right_long :
-        powerUsbBus(True)
 
     if left_long and right_long :
         return False
@@ -330,41 +352,106 @@ def check_lighting():
 
 
 def monitor_buttons(e):
-    states = []
+    gpio_states = []
     back_counts = []
     toggle_counts = []
+    button_states = []
     clocks = []
+    modifier_time = time.time()
+    long_press_delay = 2
+    sync_press_delay = 0.4
+    debounce = 4
+
     for pin in buttons :
-        states.append( GPIO.input(pin) )
+        io_state = GPIO.input(pin)
+        gpio_states.append( io_state )
         back_counts.append( 0 )
         toggle_counts.append( 0 )
         clocks.append( time.time() )
-    debounce = 4
+        if io_state == True :
+            button_states.append(STATE_UP)
+        else:
+            button_states.append(STATE_DOWN)
+
+    modifier_index = buttons.keys().index(modifierPin)
+
     while not e.isSet():
         b = 0
+
+        current_time = time.time()
+
+        # reset SET button state if delay to wait for another button release has expired
+        if button_states[modifier_index] == STATE_PENDING_SHORT_RELEASE or button_states[modifier_index] == STATE_PENDING_LONG_RELEASE :
+            # time for release another button expired
+            if current_time - modifier_time > sync_press_delay :
+                butto_states[modifier_index] = STATE_UP
+
         for pin in buttons :
+
+            # go from DOWN to HOLD if enough time has passed
+            delay = time.time() - clocks[b]
+            if button_states[b] == STATE_DOWN and delay > long_press_delay :
+                button_states[b] = STATE_HOLD
+
+            # read the new state
             newstate = GPIO.input(pin)
-            if newstate != states[b] :
+
+            # detect edge using debouncer if io has changed
+            if newstate != gpio_states[b] :
                 if toggle_counts[b] == 0 :
                     back_counts[b] = 0
-                    
+
                 if toggle_counts[b] == debounce :
-                    states[b] = newstate
+                    gpio_states[b] = newstate
                     back_counts[b] = 0
                     toggle_counts[b] = 0
                     
                     if newstate == False :
                         clocks[b] = time.time()
+                        button_states[b] = STATE_DOWN
                         try :
-                            events_queue.put_nowait( (pin, PRESSED) )
+                            events_queue.put_nowait( (EVENT_PRESSED, pin) )
                         except :
                             print "Queue full : just skip event!"
                     else :
-                        delay = time.time() - clocks[b]
-                        if delay < 3 :
-                            events_queue.put_nowait( (pin, RELEASED_SHORT) )
+
+                        # manage the SET button (modifier) in a special case
+                        if b == modifier_index : 
+                            other_down = False
+                            for i in range(0, len(gpio_states)) :
+                                if i != modifier_index :
+                                    if gpio_states[i] == False :
+                                        other_down = True
+                            if other_down == True :
+                                modifier_time = current_time
+                                if delay < long_press_delay :
+                                    button_states[modifier_index] = STATE_PENDING_SHORT_RELEASE
+                                else :
+                                    button_states[modifier_index] = STATE_PENDING_LONG_RELEASE
+                            else :
+                                if button_states[modifier_index] != STATE_UP :
+                                    if delay < long_press_delay :
+                                        events_queue.put_nowait( (EVENT_RELEASED_SHORT, modifierPin) )
+                                    else :
+                                        events_queue.put_nowait( (EVENT_RELEASED_LONG, modifierPin) )
+                                        button_states[modifier_index] = STATE_UP
+
                         else :
-                            events_queue.put_nowait( (pin, RELEASED_LONG) )
+                            if delay < long_press_delay :
+                                if button_states[modifier_index] == STATE_DOWN or button_states[modifier_index] == STATE_PENDING_SHORT_RELEASE :
+                                    pinKey = modifierPin + pin
+                                    button_states[modifier_index] = STATE_UP
+                                else :
+                                    pinKey = pin
+                                events_queue.put_nowait( (EVENT_RELEASED_SHORT, pinKey) )
+                            else :
+                                if button_states[modifier_index] == STATE_HOLD or button_states[modifier_index] == STATE_PENDING_LONG_RELEASE :
+                                    pinKey = modifierPin + pin
+                                    button_states[modifier_index] = STATE_UP
+                                else :
+                                    pinKey = pin
+                                events_queue.put_nowait( (EVENT_RELEASED_LONG, pinKey) )
+                            button_states[b] = STATE_UP
                     
                 else : 
                     toggle_counts[b] += 1
@@ -378,8 +465,7 @@ def monitor_buttons(e):
                 
             b += 1
         # end for pin
-        e.wait(0.01)
-        #time.sleep(0.01)
+        time.sleep(0.01)
     # end while True
 
 #
@@ -442,7 +528,7 @@ while up:
     if GPIO.event_detected(enablePin) :
         process_enable_switch()
     up = process_tactile_events()
-    time.sleep(0.5)
+    time.sleep(0.25)
 
 
 shutdown_clock()
@@ -454,8 +540,8 @@ print "final event sent."
 t.join()
 print "Done."
 
-delayedShutdown = "sleep 3 && shutdown -h now &"
-commands.getoutput(delayedshutdown)
+delayedShutdown = "shutdown -t 3 -h +0 &"
+commands.getoutput(delayedShutdown)
 
 # If we had an exit condition, we could restore the USB bus power,
 # which would reduce the risk of hot reboot...
