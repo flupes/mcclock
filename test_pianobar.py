@@ -15,11 +15,12 @@ def monitor_pianobar(piano):
     out = piano.stdout
     up='Get stations... Ok.'
 
-    for line in iter(out.readline, 'b'):
+    for line in iter(out.readline, ''):
         if not pianobarPlaying :
             if up in line :
                 pianobarPlaying = True
         print(line),
+    print "monitor terminated"
 
 print "spawning pianobar..."
 pianobarProcess = subprocess.Popen('pianobar', shell=True,
@@ -43,8 +44,8 @@ if pianobarPlaying:
     print "pianobar seems to be up :-)"
 
     time.sleep(12)
-    print "increase volume"
-    ctrl.write('))')
+    print "decrease volume"
+    ctrl.write('((((')
 
     time.sleep(6)
     print "select station 6"
@@ -53,6 +54,10 @@ if pianobarPlaying:
     time.sleep(12)
     print "quit"
     ctrl.write('q')
+
+    print "wait for monitor to join"
+    t.join()
+    print "main thread done."
 else:
     print "pianobar did not come up correctly!"
 
