@@ -22,6 +22,7 @@ import glob
 import time
 import datetime
 import commands
+import subprocess
 import random
 
 import threading
@@ -34,7 +35,7 @@ segment = SevenSegment(address=0x70)
 darkMode = False
 manualBrightness = 8
 segment.disp.setBrightness(manualBrightness)
-print("Stating with LIGHT at "+time.strftime("%Y-%m-%d %H:%M:%S"))
+print("Starting with LIGHT at "+time.strftime("%Y-%m-%d %H:%M:%S"))
 
 # Use BMC numbering
 GPIO.setmode(GPIO.BCM)
@@ -118,6 +119,10 @@ mlplayer = vlc.MediaListPlayer()
 mlplayer.set_media_player(player)
 
 
+pianobarPlaying = False
+pianobarProcess = 'nope'
+pianobarStation = 3
+
 def powerUsbBus(state):
     if state :
         msg = [0x01, 0xC1, 0x00, 0x3E, 0x73]
@@ -135,11 +140,83 @@ def powerUsbBus(state):
     print("Result from: "+powerUsbBusCmd+" -> "+cmdOutput)
     
 
+def send_pianobar_cmd(s):
+    #global clockMode
+    global pianobarProcess
+
+    #print "piano in send cmd:"
+    #print pianobarProcess
+    #print "clockMode = " + str(clockMode)
+    ctrl = pianobarProcess.stdin
+    try:
+        ctrl.write(s)
+    except:
+        print "could not write to pianobar"
+    #cmd = 'echo \'' + s + '\' >> /home/pi/.config/pianobar/scritps/ctl'
+    #cmdOutput = commands.getoutput(cmd)
+
+
+def monitor_pianobar(out):
+    global pianobarPlaying
+
+    up='Get stations... Ok.'
+    for line in iter(out.readline, '') :
+        print(line),
+        if not pianobarPlaying :
+            if up in line :
+                pianobarPlaying = True
+    print "monitor_pianobar : event received -> thread done"
+
+def start_pianobar():
+    global pianobarPlaying
+    global pianobarProcess
+
+    #powerUsbBus(True)
+    # Launch pianobar as pi user (to use same config data, etc.) in background:
+    print('spawning pianobar...')
+    pianobarProcess = subprocess.Popen('sudo -u pi pianobar', shell=True,
+                                       stdout=subprocess.PIPE,
+                                       stdin=subprocess.PIPE)
+
+    t = threading.Thread(name='monitor_piano', target=monitor_pianobar,
+                         args=(pianobarProcess.stdout,))
+    t.daemon = True
+    t.start()
+
+    for i in range(1, 30):
+        if pianobarPlaying :
+            break;
+        time.sleep(1)
+    if pianobarPlaying:
+        send_pianobar_cmd('^')
+        print "pianobar has been launched"
+    else:
+        print "pianobar did not start correctly"
+        # make sure it dies completely
+        subprocess.call('killall pianobar')
+        clockMode = MODE_PLAYER
+        display_msg([0x73, 0x38, 0x00, 0x77, 0x66], 9)
+        print "back to PLAYER mode"
+
+
+def stop_pianobar():
+    global pianobarProcess
+    global pianobarPlaying
+
+    send_pianobar_cmd('q')
+    #pianobarProcess.stdout.close()
+    pianobarPlaying = False
+    print "pianobar has been terminated"
+
+
 def process_enable_switch():
     global clockMode
     if GPIO.input(enablePin) == True :
+        if clockMode == MODE_PLAYER :
+            mlplayer.stop()
+        else:
+            stop_pianobar()
         clockMode = MODE_ALARM
-        mlplayer.stop()
         print("Alarm enabled -> stop playing song (clockMode="+str(clockMode)+")")
     else :
         clockMode = MODE_PLAYER
@@ -152,8 +229,9 @@ def process_enable_switch():
 def process_tactile_events():
     global manualBrightness
     global clockMode
+    global pianobarPlaying
+    global pianobarStation
 
-    set_long = False
     left_long = False
     right_long = False
 
@@ -165,16 +243,20 @@ def process_tactile_events():
         else :
             b = buttons[pin]
 
-        print("process event for switch " + b + " -> " + str(e[0]) + " (mode=" + str(clockMode)+")")
+        #print("process event for switch " + b + " -> " + str(e[0]) + " (mode=" + str(clockMode)+")")
 
         if clockMode == MODE_PLAYER :
 
             if b == "SET" and e[0] == EVENT_RELEASED_LONG :
+                while events_queue.empty() == False :
+                    e = events_queue.get_nowait()
                 mlplayer.stop()
                 clockMode = MODE_PANDORA
                 display_msg([0x73, 0x77, 0x00, 0x37, 0x3F], 9)
-                while events_queue.empty() == False :
-                    e = events_queue.get_nowait()
+                # start in a separate thread because powering up usb
+                # + network could take time
+                s = threading.Thread(name='startpiano', target=start_pianobar)
+                s.start()
 
             elif b == "SET" and e[0] == EVENT_RELEASED_SHORT :
                 if player.is_playing() :
@@ -206,15 +288,48 @@ def process_tactile_events():
                     player.audio_set_volume(volume)
                     print("volume="+str(volume))
 
+
         elif clockMode == MODE_PANDORA :
+
             if b == "SET" and e[0] == EVENT_RELEASED_LONG :
+                while events_queue.empty() == False :
+                    e = events_queue.get_nowait()
+                if pianobarPlaying :
+                    stop_pianobar()
                 clockMode = MODE_PLAYER
                 display_msg([0x73, 0x38, 0x00, 0x77, 0x66], 9)
                 print "Switching to PLAYER mode"
-                while events_queue.empty() == False :
-                    e = events_queue.get_nowait()
 
+            elif b == "SET" and e[0] == EVENT_RELEASED_SHORT :
+                if pianobarPlaying == True :
+                    send_pianobar_cmd('p')
+                    pianobarPlaying = False
+                    print("pause pianobar")
+                else :
+                    send_pianobar_cmd('P')
+                    pianobarPlaying = True
+                    print("resume pianobar")
 
+            elif b == "LEFT" and e[0] == EVENT_RELEASED_SHORT :
+                pianobarStation += 1
+                if pianobarStation > 9 :
+                    pianobarStation = 0
+                send_pianobar_cmd('s'+str(pianobarStation)+'\n')
+                print("pianobar new station: " + str(pianobarStation))
+
+            elif b == "RIGHT" and e[0] == EVENT_RELEASED_SHORT :
+                send_pianobar_cmd('n')
+                print("pianobar next song")
+
+            elif b == "UP" and e[0] == EVENT_RELEASED_SHORT :
+                send_pianobar_cmd(')))')
+                print("pianobar volume up")
+
+            elif b == "DOWN" and e[0] == EVENT_RELEASED_SHORT :
+                send_pianobar_cmd('(((')
+                print("pianobar volume down")
+
+                    
         elif clockMode == MODE_ALARM :
 
             if darkMode == False :
@@ -466,7 +581,7 @@ def monitor_buttons(e):
             b += 1
         # end for pin
         time.sleep(0.01)
-    # end while True
+    # end not event
 
 #
 # Main Program
@@ -520,7 +635,7 @@ t.start()
 GPIO.add_event_detect(enablePin, GPIO.BOTH, callback=toggle_callback, bouncetime=100)
 
 up = True
-# Main loop (now run at 2Hz: does not seem to consume more CPU and allow a quicker
+# Main loop (now run at 4Hz: does not seem to consume more CPU and allow a quicker
 # detection of the enable button
 while up:
     update_clock()
