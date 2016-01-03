@@ -28,7 +28,9 @@ while up:
             print "SELECT"
         elif e == KeyboardEvents.SHUTDOWN:
             print "SHUTDOWN"
-
+        elif e == KeyboardEvents.VOLUME:
+            print "new volume level = "+str(ke.volume)
+            
     time.sleep(1)
 
 print "stopping event listener"

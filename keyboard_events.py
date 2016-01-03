@@ -59,6 +59,7 @@ class KeyboardEvents(EventsBase):
         self.terminate = threading.Event()
         self.thread = threading.Thread(name='monitor', target=self.monitor_events)
         self.thread.start()
+        self.volume = 10
 
     def monitor_events(self):
         while not self.terminate.isSet():
@@ -78,7 +79,12 @@ class KeyboardEvents(EventsBase):
                 self.queue.put_nowait(self.SELECT)
             elif c == 'z':
                 self.queue.put_nowait(self.SHUTDOWN)
-            
+            elif c== 'e' :
+                self.volume = self.volume+1
+                self.queue.put_nowait(self.VOLUME)
+            elif c== 'c' :
+                self.volume = self.volume-1
+                self.queue.put_nowait(self.VOLUME)
             
     def stop(self):
         self.terminate.set()

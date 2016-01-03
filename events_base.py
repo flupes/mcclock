@@ -13,4 +13,5 @@ class EventsBase(object):
     SHUTDOWN = 9
 
     queue = Queue.Queue(32)
+    volume = 5
 
