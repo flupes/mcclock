@@ -1,0 +1,18 @@
+* How to install pianobar on RPi
+  http://www.lanmaster53.com/2014/05/raspberry-pi-pianobar/
+
+
+* Pandora Interface
+** Available inputs
+   - 1 rotary switch to turn on/off
+   - 5 tactile switches
+   - 1 analog pot for volume control
+** Mapping
+*** PLAY
+    - SELECT: play / pause
+    - UP / DOWN: love / ban song (or should it be tired?)
+    - RIGHT: next song (skip)
+    - LEFT: go to station mode
+*** STATION
+    - UP / DOWN: scroll through stations
+    - SELECT: change station to selection
