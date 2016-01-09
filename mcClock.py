@@ -1,6 +1,6 @@
 #!/usr/bin/python -u 
 
-# Hardcode some module path to simplify
+# Hardcode some modules path to simplify
 import sys
 basedir='/home/pi/code'
 sys.path.append(basedir+'/Adafruit-Raspberry-Pi-Python-Code/Adafruit_LEDBackpack')
@@ -17,6 +17,8 @@ from Adafruit_7Segment import SevenSegment
 # as channel) did not concretize. The returned state is corrupted
 # most of the time (what I am doing wrong?)!
 # import RPIO
+# The above is now not relevant, since I am doing my own 
+# event loop at 100Hz and use a queue to communicate events
 
 import glob
 import time
@@ -120,8 +122,13 @@ mlplayer.set_media_player(player)
 
 
 pianobarPlaying = False
-pianobarProcess = 'nope'
+pianobarProcess = 0
 pianobarStation = 3
+
+QUIT_NONE = 0
+QUIT_SHUTDOWN = 1
+QUIT_REBOOT = 2
+quitMode = QUIT_NONE
 
 def powerUsbBus(state):
     if state :
@@ -147,9 +154,8 @@ def send_pianobar_cmd(s):
     #print "piano in send cmd:"
     #print pianobarProcess
     #print "clockMode = " + str(clockMode)
-    ctrl = pianobarProcess.stdin
     try:
-        ctrl.write(s)
+        pianobarProcess.stdin.write(s)
     except:
         print "could not write to pianobar"
     #cmd = 'echo \'' + s + '\' >> /home/pi/.config/pianobar/scritps/ctl'
@@ -207,6 +213,10 @@ def stop_pianobar():
     #pianobarProcess.stdout.close()
     pianobarPlaying = False
     print "pianobar has been terminated"
+    # this is now ugly, but we make sure that it is dead
+    # in case of some bad input/output interaction
+    killpiano = 'kiall pianobar'
+    commands.getoutput(killpiano)
 
 
 def process_enable_switch():
@@ -231,9 +241,12 @@ def process_tactile_events():
     global clockMode
     global pianobarPlaying
     global pianobarStation
+    global quitMode
 
     left_long = False
     right_long = False
+    up_long = False
+    down_long = False
 
     while events_queue.empty() == False :
         e = events_queue.get_nowait()
@@ -312,7 +325,7 @@ def process_tactile_events():
 
             elif b == "LEFT" and e[0] == EVENT_RELEASED_SHORT :
                 pianobarStation += 1
-                if pianobarStation > 9 :
+                if pianobarStation > 6 :
                     pianobarStation = 0
                 send_pianobar_cmd('s'+str(pianobarStation)+'\n')
                 print("pianobar new station: " + str(pianobarStation))
@@ -357,8 +370,22 @@ def process_tactile_events():
             elif b == "RIGHT" and e[0] == EVENT_RELEASED_LONG :
                 right_long = True
 
+            elif b == "UP" and e[0] == EVENT_RELEASED_LONG :
+                up_long = True
 
+            elif b == "DOWN" and e[0] == EVENT_RELEASED_LONG :
+                down_long = True
+
+
+    # The following key combination will only work if the two keys
+    # are released during the same process period (0.25s). So this 
+    # is kind of hacky, but should only fail 1 over 25 times since
+    # events are detected at 100Hz.
     if left_long and right_long :
+        quitMode = QUIT_SHUTDOWN
+        return False
+    elif up_long and down_long :
+        quitMode = QUIT_REBOOT
         return False
     else :
         return True
@@ -655,10 +682,21 @@ print "final event sent."
 t.join()
 print "Done."
 
-delayedShutdown = "shutdown -t 3 -h +0 &"
-commands.getoutput(delayedShutdown)
-
 # If we had an exit condition, we could restore the USB bus power,
 # which would reduce the risk of hot reboot...
 #powerUsbBus(True)
 
+time.sleep(3)
+
+if quitMode == QUIT_SHUTDOWN :
+    delayedShutdown = "shutdown -t 3 -h +0 &"
+    commands.getoutput(delayedShutdown)
+elif quitMode == QUIT_REBOOT :
+    reboot = 'reboot'
+    commands.getoutput(reboot)
+
+# All done!
+
+# to control the default maximum output volume
+# sudo amixer cset numid=1 95% 
+# sudo alsactl store
