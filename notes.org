@@ -1,7 +1,33 @@
 * How to install pianobar on RPi
   http://www.lanmaster53.com/2014/05/raspberry-pi-pianobar/
+#+begin_src bash
+# install dependencies
+sudo apt-get install git libao-dev libgcrypt11-dev libgnutls-dev libfaad-dev libmad0-dev libjson0-dev make pkg-config
+# install FFmpeg manually from source
+git clone https://github.com/FFmpeg/FFmpeg.git
+cd FFmpeg
+./configure
+make
+sudo make install
+cd ..
+# install pianobar manually from source
+git clone https://github.com/PromyLOPh/pianobar.git
+cd pianobar
+make
+sudo make install
+#+end_src
 
-
+* Change volume with alsa on command line
+  http://blog.scphillips.com/posts/2013/01/sound-configuration-on-raspberry-pi-with-alsa/
+#+begin_src bash
+# get controls
+amixer controls
+# get control settings
+amixer cget numid=3
+# set control
+amixer cset numid=3 50%
+#+end_src
+  
 * Pandora Interface
 ** Available inputs
    - 1 rotary switch to turn on/off

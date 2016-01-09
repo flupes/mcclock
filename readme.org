@@ -1,4 +1,3 @@
-
 * Minecraft Jukebox Alarm Clock
 ** Concept
    A fun alarm clock for a 9 year old. It plays Minecraft songs for
@@ -95,3 +94,4 @@ tvservice -o
    Starting from scratch, it would be probably preferable to use an old
    iPod and an Arduino type microcontroller (which also would bring the
    power draw down).
+
