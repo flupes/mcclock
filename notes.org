@@ -27,7 +27,29 @@ amixer cget numid=3
 # set control
 amixer cset numid=3 50%
 #+end_src
-  
+
+* Configure the USB sound card as the default
+  http://computers.tutsplus.com/articles/using-a-usb-audio-device-with-a-raspberry-pi--mac-55876
+#+begin_src bash
+# edit the file:
+#   /etc/modprobe.d/alsa-base.conf
+# comment out the line:
+#   options snd-usb-audio index=-2
+#+end_src
+
+* Use the Pi hardware SPI for MCP3008 analog input
+  http://jeremyblythe.blogspot.com/2012/09/raspberry-pi-hardware-spi-analog-inputs.html
+#+begin_src
+# Enable SPI with raspi-config, including kernel module
+#   reboot
+# Install the python development package
+sudo apt-get install python-dev
+# Get the hardware SPI python library
+git clone git://github.com/doceme/py-spidev
+cd py-spidev
+sudo python setup.py install
+#+end_src
+
 * Pandora Interface
 ** Available inputs
    - 1 rotary switch to turn on/off
