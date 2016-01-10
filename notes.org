@@ -50,6 +50,22 @@ cd py-spidev
 sudo python setup.py install
 #+end_src
 
+* Install Emacs 24 on Pi
+  - Get the lastest URL to download from:
+    http://ftp.gnu.org/gnu/emacs/
+  - Configure and build
+#+begin_src bash
+cd pkgs
+wget http://ftp.gnu.org/gnu/emacs/emacs-24.5.tar.gz
+tar xvzf emacs-24.5.tar.gz
+cd emacs-24.5
+./configure --without-x --prefix /opt/emacs
+make -j2
+#+end_src
+  - Install on the system
+#+begin_src bash
+sudo make install
+#+end_src
 * Pandora Interface
 ** Available inputs
    - 1 rotary switch to turn on/off
