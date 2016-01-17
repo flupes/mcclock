@@ -13,23 +13,26 @@ while up:
     while ke.queue.empty() == False:
         e = ke.queue.get_nowait()
 
-        if e == KeyboardEvents.QUIT:
-            print "got QUIT"
-            up = False
-        elif e == KeyboardEvents.LEFT:
-            print "LEFT"
-        elif e == KeyboardEvents.RIGHT:
-            print "RIGHT"
-        elif e == KeyboardEvents.UP:
-            print "UP"
-        elif e == KeyboardEvents.DOWN:
-            print "DOWN"
-        elif e == KeyboardEvents.SELECT:
-            print "SELECT"
-        elif e == KeyboardEvents.SHUTDOWN:
-            print "SHUTDOWN"
-        elif e == KeyboardEvents.VOLUME:
-            print "new volume level = "+str(ke.volume)
+        if e[0] == KeyboardEvents.KEY:
+            if e[1] == KeyboardEvents.KEY_RESET:
+                print "got RESET"
+                up = False
+            elif e[1] == KeyboardEvents.KEY_LEFT:
+                print "LEFT"
+            elif e[1] == KeyboardEvents.KEY_RIGHT:
+                print "RIGHT"
+            elif e[1] == KeyboardEvents.KEY_UP:
+                print "UP"
+            elif e[1] == KeyboardEvents.KEY_DOWN:
+                print "DOWN"
+            elif e[1] == KeyboardEvents.KEY_SELECT:
+                print "SELECT"
+                
+        elif e[0] == KeyboardEvents.VOLUME:
+            print "new volume level = "+str(e[1])
+
+        elif e[0] == KeyboardEvents.MODE:
+            print "new mode ->"+str(e[1])
             
     time.sleep(1)
 
