@@ -1,11 +1,11 @@
 import os
 import time
-#import threading
 import pexpect
 
 from events_base import EventsBase
 
 class PianobarController(object):
+    OFF = 0
     PLAYING = 1
     PAUSED = 2
     STATION = 3
@@ -16,126 +16,99 @@ class PianobarController(object):
         #self.pianobar_proc = pb_proc
         self.ui_input = ui_in
         self.ui_out = ui_out
-        self.mode = PianobarController.PAUSED
+        self.mode = PianobarController.OFF
         self.pianobar = None
-#        print "launching pianobar controller thread"
-#        self.terminate = threading.Event()
-#        self.thread = threading.Thread(name='controller', target=self.control)
-#        self.thread.start()
+        self.counter = 0
 
     def launch(self):
+        # spawn the pianobar process
         if self.pianobar == None:
-            print "spawing pianobar..."
-            self.pianobar = pexpect.spawn(self.PIANOBAR_CMD)
-            self.pianobar.expect('Get stations... Ok.\r\n', timeout=30)
-            print "pianobar started..."
-            
+            try:
+                print "spawing pianobar..."
+                self.pianobar = pexpect.spawn(self.PIANOBAR_CMD)
+                self.pianobar.expect('Get stations... Ok.\r\n', timeout=30)
+                print "pianobar started..."
+                self.mode = PianobarController.PAUSED
+            except:
+                print "launching pianobar failed!"
         else:
             print "pianobar already spawned: hopping it is in a good state..."
         
-    def control(self):
-        self.launch()
-        pattern_list = self.pianobar.compile_pattern_list(['SONG: ', 'STATION: ', 'TIME: ', 'Receiving new playlist...'])
         # force start playing
         print "start playing..."
         self.pianobar.send('P')
         self.mode = PianobarController.PLAYING
 
-        print "start main loop"
-        #while not self.terminate.isSet():
-        while self.pianobar.isalive():
-
-            counter = 0
-            # Process output from pianobar
-            while True:
-                try:
-                    x = self.pianobar.expect(pattern_list, timeout=0)
-                    if x == 0:
-                        title = ''
-                        artist = ''
-                        album = ''
-                        x = self.pianobar.expect(' \| ')
-                        if x == 0: # Title | Artist | Album
-                            title = self.pianobar.before
-                            x = self.pianobar.expect(' \| ')
-                            if x == 0:
-                                artist = self.pianobar.before
-                                x = self.pianobar.expect('\r\n')
-                                if x == 0:
-                                    album = self.pianobar.before
-                        print "got new song:",title,"by",artist,"on",album
-                    elif x == 1:
-                        x = self.pianobar.expect(' \| ')
-                        if x == 0:
-                            print "got new station:",self.pianobar.before
-                    elif x == 2:
-                        # Time doesn't include newline - prints over itself.
-                        x = self.pianobar.expect('\r', timeout=1)
-                        if x == 0:
-                            timing = self.pianobar.before
-                            if (counter % 50) == 0:
-                                print "timing:",timing
-                            counter = counter + 1
-                    elif x == 3:
-                        x = self.pianobar.expect(' Ok.\r\n')
-                        if x == 0:
-                            print "got playlist right."
-                except pexpect.EOF:
-                    break;
-                except pexpect.TIMEOUT:
-                    break;
-                                                                                 
-            # Process input events
-            while self.ui_input.queue.empty() == False:
-                e = self.ui_input.queue.get_nowait()
-
-                if e == EventsBase.VOLUME:
-                    print "VOLUME -> " + str(self.ui_input.volume)
-
-                if e == EventsBase.SHUTDOWN:
-                    print "SHUTDOWN"
-                    self.pianobar.send('\n')
-                    self.pianobar.send('q')
-                    
-                if self.mode == PianobarController.STATION:
-                    if e == EventsBase.SELECT:
-                        print "select station not implemented yet"
-                        self.mode = PianobarController.PLAYING
-                    elif e == EventsBase.UP:
-                        print "prev station not implemented yet"
-                    elif e == EventsBase.DOWN:
-                        print "next station not implemented yet"
-                else:
-                    if e == EventsBase.LEFT:
-                        # flush pending events to switch mode
-                        while self.ui_input.queue.empty() == False:
-                            self.ui_input.queue.get_nowait()
-                        self.mode = PianobarController.STATION
-                        print "STATION"
-                    elif e == EventsBase.SELECT:
-                        if self.mode == PianobarController.PLAYING:
-                            self.mode = PianobarController.PAUSED
-                            print "PAUSE"
-                            self.pianobar.send('S')
-                        elif self.mode == PianobarController.PAUSED:
-                            self.mode = PianobarController.PLAYING
-                            print "PLAY"
-                            self.pianobar.send('P')
-                    elif e == EventsBase.RIGHT:
-                        print "NEXT"
-                        self.pianobar.send('n')
-                    elif e == EventsBase.UP:
-                        print "LOVE"
-                        self.pianobar.send('+')
-                    elif e == EventsBase.DOWN:
-                        print "BAN"
-                        self.pianobar.send('t')
-            # wait a little bit before processing the next events
-            time.sleep(0.1)
-            
-        print "pianobar is down."
+    def stop(self):
+        if self.mode == PianobarController.OFF:
+            print "pianobar already stopped. skip command!"
+            return
         
-    # def shutdown(self):
-    #     self.terminate.set()
-    #     self.thread.join()
-    #     print "pianobar controller stopped."
+        print "stop pianobar"
+        self.pianobar.send('\n')
+        self.pianobar.send('q')
+        self.pianobar = None
+        self.mode = PianobarController.OFF
+            
+    def play(self):
+        self.pianobar.send('P')
+        self.mode = PianobarController.PLAYING
+
+    def pause(self):
+        self.pianobar.send('S')
+        self.mode = PianobarController.PAUSED
+
+    def next(self):
+        self.pianobar.send('n')
+
+    def love(self):
+        self.pianobar.send('+')
+
+    def tired(self):
+        self.pianobar.send('t')
+
+    def update(self):
+        # Process output from pianobar
+        # Receive initial playlist
+        if self.mode == PianobarController.OFF:
+            return
+        
+        pattern_list = self.pianobar.compile_pattern_list(['SONG: ', 'STATION: ', 'TIME: ', 'Receiving new playlist...'])
+        
+        while True:
+            try:
+                x = self.pianobar.expect(pattern_list, timeout=0)
+                if x == 0:
+                    title = ''
+                    artist = ''
+                    album = ''
+                    x = self.pianobar.expect(' \| ')
+                    if x == 0: # Title | Artist | Album
+                        title = self.pianobar.before
+                        x = self.pianobar.expect(' \| ')
+                        if x == 0:
+                            artist = self.pianobar.before
+                            x = self.pianobar.expect('\r\n')
+                            if x == 0:
+                                album = self.pianobar.before
+                    print "got new song:",title,"by",artist,"on",album
+                elif x == 1:
+                    x = self.pianobar.expect(' \| ')
+                    if x == 0:
+                        print "got new station:",self.pianobar.before
+                elif x == 2:
+                    # Time doesn't include newline - prints over itself.
+                    x = self.pianobar.expect('\r', timeout=1)
+                    if x == 0:
+                        timing = self.pianobar.before
+                        self.counter = self.counter + 1
+                        if (self.counter % 20) == 0:
+                            print "timing:",timing
+                elif x == 3:
+                    x = self.pianobar.expect(' Ok.\r\n')
+                    if x == 0:
+                        print "got playlist right."
+            except pexpect.EOF:
+                break;
+            except pexpect.TIMEOUT:
+                break;
