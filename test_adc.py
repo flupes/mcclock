@@ -6,7 +6,7 @@ spi = spidev.SpiDev()
 spi.open(0,0)
 
 # List of pins to read voltage from
-adc_pins = [ 0, 2, 3 ]
+adc_pins = (0, 2, 3)
 
 # read SPI data from MCP3008 chip, 8 possible adc's (0 thru 7)
 def readadc(adcnum):
@@ -16,6 +16,18 @@ def readadc(adcnum):
 	adcout = ((r[1]&3) << 8) + r[2]
 	return adcout
 
+samples = 1000
+start = time.clock()
+
+v = [0.0, 0.0, 0.0]
+for i in range(0,samples):
+        for i,p in enumerate(adc_pins):
+                v[i] = v[i]+readadc(p)
+
+stop = time.clock()
+
+print "time for",samples,"*3 readings =",stop-start
+
 while True:
         for p in adc_pins:
                 v = readadc(p)
@@ -23,4 +35,4 @@ while True:
         print
         
         # hang out and do nothing for a half second
-        time.sleep(0.1)
+        time.sleep(0.2)
