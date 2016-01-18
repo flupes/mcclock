@@ -2,19 +2,32 @@ import spidev
 import time
 import threading
 
+import RPi.GPIO as GPIO
+
 from events_base import EventsBase
 
 class PibEvents(EventsBase):
 
     POT_CHANNEL = 0
     JOY_CHANNELS = [2, 3]
-
+    SEL_PIN = 17
+    ROT_PINS = (22, 27)
+    
     VOL_TOLERANCE = 4
 
     HIGH = 1
     LOW = 0
     
     def __init__(self):
+        # configure the digital pins
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(self.SEL_PIN, GPIO.IN)
+        self.select_switch = self.HIGH
+        GPIO.setup(self.ROT_PINS[0], GPIO.IN)
+        GPIO.setup(self.ROT_PINS[1], GPIO.IN)
+        self.rotary_selector = self.read_rotary_selector()
+        print "startup mode =", self.rotary_selector
+        
         # initialize the inputs
         self.spi = spidev.SpiDev()
         self.spi.open(0,0)
@@ -29,7 +42,7 @@ class PibEvents(EventsBase):
         ]
         self.mid_pot = [512, 512]
         self.calibrate_joystick()
-        
+
         print "starting Pi-B events listener"
         self.terminate = threading.Event()
         self.thread = threading.Thread(name='monitor', target=self.monitor_events)
@@ -90,12 +103,27 @@ class PibEvents(EventsBase):
                     k[3] = self.LOW
                     self.queue.put_nowait( (self.KEY, k[0]) )
 
-
+    def read_rotary_selector(self):
+        s = 0
+        v = 0
+        for p in self.ROT_PINS:
+            b = GPIO.input(p)
+            v = v | ( b << s )
+            s = s + 1
+        return v
+    
+    def process_dinputs(self):
+        b = self.read_rotary_selector()
+        if self.rotary_selector != b:
+            self.rotary_selector = b
+            self.queue.put_nowait( (self.MODE, b) )
+                    
     def monitor_events(self):
         while not self.terminate.isSet():
 
             self.process_volume_pot()
             self.process_joystick()
+            self.process_dinputs()
             
             time.sleep(0.04)
             
