@@ -1,0 +1,25 @@
+import time
+from pib_events import PibEvents
+
+up = True
+
+pe = PibEvents()
+
+while up:
+    while pe.queue.empty() == False:
+        e = pe.queue.get_nowait()
+
+        if e[0] == PibEvents.VOLUME:
+            print "volume =",str(e[1])
+
+        elif e[0] == PibEvents.KEY:
+            print "keypress:", e[1]
+            
+        elif e[0] == PibEvents.JOYSTICK:
+            print "joystick: axis",e[1],"->",e[2]
+            
+    time.sleep(0.2)
+
+pe.stop()
+
+print "clean exit"
