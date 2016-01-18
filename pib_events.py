@@ -5,28 +5,40 @@ import threading
 import RPi.GPIO as GPIO
 
 from events_base import EventsBase
+from debouncer import Debouncer
 
 class PibEvents(EventsBase):
 
     POT_CHANNEL = 0
     JOY_CHANNELS = [2, 3]
-    SEL_PIN = 17
-    ROT_PINS = (22, 27)
+    SELECT_SWITCH_PIN = 17
+    ROTARY_SWITCH_PINS = (22, 27)
     
     VOL_TOLERANCE = 4
 
     HIGH = 1
     LOW = 0
-    
+
+    UPDATE_RATE = 20
+    SELECT_DEBOUNCE_PERIOD = 0.1
+    ROTARY_DEBOUNCE_PERIOD = 0.3
+    ROTARY_STABLE_PERIOD = 1.2
+            
     def __init__(self):
         # configure the digital pins
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.SEL_PIN, GPIO.IN)
-        self.select_switch = self.HIGH
-        GPIO.setup(self.ROT_PINS[0], GPIO.IN)
-        GPIO.setup(self.ROT_PINS[1], GPIO.IN)
-        self.rotary_selector = self.read_rotary_selector()
-        print "startup mode =", self.rotary_selector
+        self.select_switch = Debouncer(self.SELECT_SWITCH_PIN,
+                                       int(self.SELECT_DEBOUNCE_PERIOD*self.UPDATE_RATE))
+        self.select_state = self.select_switch.debounce()
+
+        self.rotary_switch = []
+        for i,p in enumerate(self.ROTARY_SWITCH_PINS):
+            self.rotary_switch.append(Debouncer(p,
+                                                int(self.ROTARY_DEBOUNCE_PERIOD*self.UPDATE_RATE)))
+        self.rotary_state = self.read_rotary_selector()
+        print "startup mode =", self.rotary_state
+        self.rotary_new = self.rotary_state
+        self.rotary_count = 0
         
         # initialize the inputs
         self.spi = spidev.SpiDev()
@@ -46,6 +58,7 @@ class PibEvents(EventsBase):
         print "starting Pi-B events listener"
         self.terminate = threading.Event()
         self.thread = threading.Thread(name='monitor', target=self.monitor_events)
+        self.last_update = time.clock()
         self.thread.start()
 
     # read SPI data from MCP3008 chip, 8 possible adc's (0 thru 7)
@@ -104,29 +117,47 @@ class PibEvents(EventsBase):
                     self.queue.put_nowait( (self.KEY, k[0]) )
 
     def read_rotary_selector(self):
-        s = 0
         v = 0
-        for p in self.ROT_PINS:
-            b = GPIO.input(p)
+        for s in range(0, len(self.ROTARY_SWITCH_PINS)):
+            b = self.rotary_switch[s].debounce()
             v = v | ( b << s )
-            s = s + 1
         return v
-    
+            
     def process_dinputs(self):
         b = self.read_rotary_selector()
-        if self.rotary_selector != b:
-            self.rotary_selector = b
+        if b != self.rotary_new:
+            self.rotary_new = b
+            self.rotary_count = self.ROTARY_STABLE_PERIOD*self.UPDATE_RATE
+        else:
+            if self.rotary_count > 0:
+                self.rotary_count = self.rotary_count - 1
+            
+        if (self.rotary_count == 0) and (self.rotary_new != self.rotary_state):
+            self.rotary_state = self.rotary_new
             self.queue.put_nowait( (self.MODE, b) )
-                    
+            
+        s = self.select_switch.debounce()
+        if self.select_state != s:
+            self.select_state = s
+            # event only on release
+            if self.select_state == self.HIGH:
+                self.queue.put_nowait( (self.KEY, self.KEY_SELECT) )
+            
     def monitor_events(self):
         while not self.terminate.isSet():
 
             self.process_volume_pot()
             self.process_joystick()
             self.process_dinputs()
-            
-            time.sleep(0.04)
-            
+
+            now = time.clock()
+            sleep_time = 1.0/self.UPDATE_RATE - now + self.last_update
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+            else:
+                print "warning: pib_events cannot respect",self.UPDATE_RATE,"Hz!"
+            self.last_update = now
+                
     def stop(self):
         self.terminate.set()
         self.thread.join()
