@@ -10,9 +10,10 @@ class EventsBase(object):
     
     MODE = 0
     KEY = 1
-    VOLUME = 2
-    LIGHT = 3
+    LIGHT = 2
+    VOLUME = 3
+    JOYSTICK = 4
 
-    queue = Queue.Queue(16)
+    queue = Queue.Queue(32)
     volume = 5
     mode = 0
