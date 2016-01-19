@@ -10,6 +10,17 @@ from Adafruit_7Segment import SevenSegment
 
 class AlarmClock(object):
 
+    # Time and song to wake up for each day of the week (0=Monday)
+    wakeup = [
+        (datetime.time(7,20), "Dragons.mp3"),
+        (datetime.time(7,20), "Emeralds.mp3"),
+        (datetime.time(7,20), "FallenKingdom.mp3"),
+        (datetime.time(7,20), "MiningOres.mp3"),
+        (datetime.time(7,20), "NewWorld.mp3"),
+        (datetime.time(9,00), "TakeBackTheNight.mp3"),
+        (datetime.time(9,00), "CreepersGonnaCreep.mp3")
+    ]
+
     def __init__(self):
         # Initialize the 7 segment display
         self.segment = SevenSegment(address=0x70)
@@ -24,7 +35,15 @@ class AlarmClock(object):
 
         self.brightness_level = 12
         self.segment.disp.setBrightness(self.brightness_level)
-        self.enabled = 0
+
+        self.alarm_enabled = False
+        now = datetime.datetime.now()
+        self.current_day = now.day
+        if now.time() > self.wakeup[now.weekday()][0] :
+            self.ringed_today = True
+        else :
+            self.ringed_today = False
+
         
     def message(self, msg, delay):
         for i in range(len(msg)) :
@@ -47,8 +66,8 @@ class AlarmClock(object):
             
     def update(self):
         t = time.time()
+        now = datetime.datetime.now()    
         if t > self.msg_timestamp + self.msg_duration :
-            now = datetime.datetime.now()    
             hour = now.hour
             minute = now.minute
             second = now.second
@@ -64,19 +83,22 @@ class AlarmClock(object):
             # Set minutes
             self.segment.writeDigit(3, int(minute / 10))   # Tens
             # Ones and alarm enable (dot)
-            self.segment.writeDigit(4, minute % 10, self.enabled)
+            self.segment.writeDigit(4, minute % 10, self.alarm_enabled)
             # Toggle color
             self.segment.setColon(second % 2)              # Toggle colon at 1Hz
 
-            # # Check if alarm is necessary
-            # global ringedToday
-            # if GPIO.input(enablePin) == True :
-            #     if not ringedToday :
-            #         day = now.weekday()
-            #         if now.time() > wakeup[day][0] :
-            #             play_alarm(day)
-            # # Update alarm state
-            # global currentDay
-            # if currentDay != now.day :
-            #     currentDay = now.day
-            #     ringedToday = False
+        # Check if alarm is necessary
+        alarm = False
+        if self.alarm_enabled == True :
+            if not self.ringed_today :
+                if now.time() > self.wakeup[now.weekday()][0] :
+                    alarm = True
+                    self.ringed_today = True
+                    
+        # Update alarm state for new day
+        if self.current_day != now.day :
+            self.current_day = now.day
+            self.ringed_today = False
+
+        return alarm
+
