@@ -17,14 +17,14 @@ def readadc(adcnum):
 	return adcout
 
 samples = 1000
-start = time.clock()
+start = time.time()
 
 v = [0.0, 0.0, 0.0]
 for i in range(0,samples):
         for i,p in enumerate(adc_pins):
                 v[i] = v[i]+readadc(p)
 
-stop = time.clock()
+stop = time.time()
 
 print "time for",samples,"*3 readings =",stop-start
 

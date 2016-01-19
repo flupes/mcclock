@@ -58,7 +58,7 @@ class PibEvents(EventsBase):
         print "starting Pi-B events listener"
         self.terminate = threading.Event()
         self.thread = threading.Thread(name='monitor', target=self.monitor_events)
-        self.last_update = time.clock()
+        self.last_update = time.time()
         self.thread.start()
 
     # read SPI data from MCP3008 chip, 8 possible adc's (0 thru 7)
@@ -150,7 +150,7 @@ class PibEvents(EventsBase):
             self.process_joystick()
             self.process_dinputs()
 
-            now = time.clock()
+            now = time.time()
             sleep_time = 1.0/self.UPDATE_RATE - now + self.last_update
             if sleep_time > 0:
                 time.sleep(sleep_time)
