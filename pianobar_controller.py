@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import pexpect
 
@@ -12,13 +13,9 @@ class PianobarController(object):
 
     PIANOBAR_CMD = os.environ['HOME']+'/devel/pianobar/pianobar'
     
-    def __init__(self, ui_in, ui_out):
-        #self.pianobar_proc = pb_proc
-        self.ui_input = ui_in
-        self.ui_out = ui_out
+    def __init__(self):
         self.mode = PianobarController.OFF
         self.pianobar = None
-        self.counter = 0
 
     def launch(self):
         # spawn the pianobar process
@@ -67,14 +64,45 @@ class PianobarController(object):
     def tired(self):
         self.pianobar.send('t')
 
+    def select_station(self, station_id):
+        self.pianobar.send(station_id)
+        self.pianobar.send('\n')
+        
+    def get_stations(self):
+        self.pianobar.send('s')
+        try:
+            self.pianobar.expect('Select station: ', timeout=12)
+        except:
+            print "error parsing string of new stations"
+            return None
+        
+        lines = self.pianobar.before.splitlines()
+        print lines
+        stations = []
+        p = re.compile('^(\S*\t ?)(\d+)\) [ q][ Q][ S] (.+)$')
+        for st in lines:
+            m = p.match(st)
+            if m is not None:
+                try:
+                    num = m.group(2)
+                except:
+                    "Error in parsing ID of station list!"
+                name = m.group(3)
+                stations.append((num, name))
+        return stations
+    
     def update(self):
         # Process output from pianobar
         # Receive initial playlist
         if self.mode == PianobarController.OFF:
-            return
+            return None, None, None
         
         pattern_list = self.pianobar.compile_pattern_list(['SONG: ', 'STATION: ', 'TIME: ', 'Receiving new playlist...'])
         
+        song = None
+        timing = None
+        station = None
+
         while True:
             try:
                 x = self.pianobar.expect(pattern_list, timeout=0)
@@ -91,24 +119,23 @@ class PianobarController(object):
                             x = self.pianobar.expect('\r\n')
                             if x == 0:
                                 album = self.pianobar.before
-                    print "got new song:",title,"by",artist,"on",album
+                    song=(title, artist, album)
                 elif x == 1:
                     x = self.pianobar.expect(' \| ')
                     if x == 0:
-                        print "got new station:",self.pianobar.before
+                        station = self.pianobar.before
                 elif x == 2:
                     # Time doesn't include newline - prints over itself.
                     x = self.pianobar.expect('\r', timeout=1)
                     if x == 0:
                         timing = self.pianobar.before
-                        self.counter = self.counter + 1
-                        if (self.counter % 20) == 0:
-                            print "timing:",timing
                 elif x == 3:
                     x = self.pianobar.expect(' Ok.\r\n')
                     if x == 0:
-                        print "got playlist right."
+                        print "got playlist OK."
             except pexpect.EOF:
                 break;
             except pexpect.TIMEOUT:
                 break;
+
+        return song, timing, station

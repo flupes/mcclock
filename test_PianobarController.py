@@ -5,7 +5,7 @@ from pianobar_controller import PianobarController
 
 up = True
 ke = KeyboardEvents()
-piano = PianobarController(ke, 0)
+piano = PianobarController()
 
 def clean_exit(signum, frame):
     signal.signal(signal.SIGINT, original_sigint)
@@ -17,6 +17,11 @@ def clean_exit(signum, frame):
 #signal.signal(signal.SIGINT, clean_exit)
 
 print "starting pianobar test application"
+
+counter = 0
+station_list = []
+station_index = 1
+current_station = None
 
 # main loop
 while up:
@@ -42,12 +47,18 @@ while up:
         if e[0] == KeyboardEvents.KEY:
             if piano.mode == PianobarController.STATION:
                 if e[1] == KeyboardEvents.KEY_SELECT:
-                    print "select station not implemented yet"
-                    piano.play()
+                    piano.select_station(station_list[station_index][0])
+                    piano.mode = PianobarController.PLAYING
                 elif e[1] == KeyboardEvents.KEY_UP:
-                    print "prev station not implemented yet"
+                    if station_index < len(station_list)-1:
+                        station_index=station_index+1
+                    print "current selection =",station_list[station_index][0],
+                    print "->",station_list[station_index][1]
                 elif e[1] == KeyboardEvents.KEY_DOWN:
-                    print "next station not implemented yet"
+                    if station_index > 0:
+                        station_index=station_index-1
+                    print "current selection =",station_list[station_index][0],
+                    print "->",station_list[station_index][1]
             elif piano.mode != PianobarController.OFF:
                 if e[1] == KeyboardEvents.KEY_LEFT:
                     # flush pending events to switch mode
@@ -55,11 +66,22 @@ while up:
                         ke.queue.get_nowait()
                     piano.mode = PianobarController.STATION
                     print "STATION"
+                    station_list = piano.get_stations()
+                    station_index = 0
+                    for s in station_list:
+                        if current_station == s[1]:
+                            break;
+                        station_index = station_index+1
+                    if station_index == len(station_list):
+                        print "current station not found in list!"
+                        station_index = 1
+                    print station_list
+                    print "current station index is:", station_index
                 elif e[1] == KeyboardEvents.KEY_SELECT:
-                    if self.mode == PianobarController.PLAYING:
+                    if piano.mode == PianobarController.PLAYING:
                         print "PAUSE"
                         piano.pause()
-                    elif self.mode == PianobarController.PAUSED:
+                    elif piano.mode == PianobarController.PAUSED:
                         print "PLAY"
                         piano.play()
                 elif e[1] == KeyboardEvents.KEY_RIGHT:
@@ -72,7 +94,20 @@ while up:
                     print "TIRED"
                     piano.tired()
 
-    piano.update()
+    song, timing, station = piano.update()
+
+    if song is not None:
+        print "got new song:",song[0],"by",song[1],"on",song[2]
+
+    if timing is not None:
+        counter = counter + 1
+        if (counter % 10) == 0:
+            print "timing:",timing
+
+    if station is not None:
+        current_station = station
+        print "got new station:", station
+    
     # wait a little bit before processing the next events
     time.sleep(0.2)
 
