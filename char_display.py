@@ -56,8 +56,7 @@ class CharDisplay(object):
             if w >= 0:
                 self.lcd.message((self.lines[l])[p:p+self.NUMBER_CHARS])
             else:
-                msg = (self.lines[l])[p:s]+(self.lines[l])[0:-w]
-                self.lcd.message(msg)
+                self.lcd.message( (self.lines[l])[p:s]+(self.lines[l])[0:-w] )
                 
     def update(self):
         # tick the display to allow dynamic effects
