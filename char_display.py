@@ -92,6 +92,8 @@ class CharDisplay(object):
             if self.expirations[l] > 0:
                 if now > (self.expirations[l]):
                     self.expirations[l] = 0
+                    self.lcd.set_cursor(0, l)
+                    self.lcd.message("                        ")
                     self.__draw__(l)
             if self.periods[l] > 0:
                 if now > (self.timestamps[l]):
