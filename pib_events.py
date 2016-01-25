@@ -14,11 +14,19 @@ class PibEvents(EventsBase):
     SELECT_SWITCH_PIN = 17
     ROTARY_SWITCH_PINS = (22, 27)
     
-    VOL_TOLERANCE = 4
+    VOL_TOLERANCE = 2
 
     HIGH = 1
     LOW = 0
 
+    # mode values correspond to the selector switch coding:
+    # from most left to most right:
+    # 3 -> 2 -> 0 -> 1
+    MODE_ALARM = 3
+    MODE_PLAYER = 1
+    MODE_PANDORA = 0
+    MODE_SPECIAL = 2
+    
     UPDATE_RATE = 20
     SELECT_DEBOUNCE_PERIOD = 0.1
     ROTARY_DEBOUNCE_PERIOD = 0.3
@@ -144,6 +152,9 @@ class PibEvents(EventsBase):
                 self.queue.put_nowait( (self.KEY, self.KEY_SELECT) )
             
     def monitor_events(self):
+        stat_period = 10
+        missed_ticks = 0
+        last_stat_time = time.time()
         while not self.terminate.isSet():
 
             self.process_volume_pot()
@@ -155,8 +166,14 @@ class PibEvents(EventsBase):
             if sleep_time > 0:
                 time.sleep(sleep_time)
             else:
-                print "warning: pib_events cannot respect",self.UPDATE_RATE,"Hz!"
+                missed_ticks = missed_ticks+1
             self.last_update = now
+            if (now - last_stat_time) > stat_period:
+                if missed_ticks > 0:
+                    print "warning: pib_events cannot respect",self.UPDATE_RATE,"Hz:"
+                    print missed_ticks,"updates were too slow over",stat_period,"s !"
+                last_stat_time = now
+                missed_ticks = 0
                 
     def stop(self):
         self.terminate.set()
