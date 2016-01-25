@@ -56,11 +56,13 @@ class PibEvents(EventsBase):
 
         self.volume = 0
         self.joystick = [0, 0]
+        # key properties:
+        # code, axis_num, axis_dir, state, to_high_threshold, to_low_threshold
         self.keys = [
-            [EventsBase.KEY_LEFT, 0, -1, self.LOW],
-            [EventsBase.KEY_RIGHT, 0, 1, self.LOW],
-            [EventsBase.KEY_UP, 1, 1, self.LOW],
-            [EventsBase.KEY_DOWN, 1, -1, self.LOW]
+            [EventsBase.KEY_LEFT, 0, -1, self.LOW, 35, 10],
+            [EventsBase.KEY_RIGHT, 0, 1, self.LOW, 35, 10],
+            [EventsBase.KEY_UP, 1, 1, self.LOW, 70, 10],
+            [EventsBase.KEY_DOWN, 1, -1, self.LOW, 70, 10]
         ]
         self.mid_pot = [512, 512]
         self.calibrate_joystick()
@@ -118,11 +120,13 @@ class PibEvents(EventsBase):
             current_state = k[3]
             factor = k[2]
             channel = k[1]
+            low_threshold = k[5]
+            high_threshold = k[4]
             if current_state == self.LOW:
-                if self.joystick[channel]*factor > 30:
+                if self.joystick[channel]*factor > high_threshold:
                     k[3] = self.HIGH
             else: # current HIGH state
-                if self.joystick[channel]*factor < 10:
+                if self.joystick[channel]*factor < low_threshold:
                     k[3] = self.LOW
                     self.queue.put_nowait( (self.KEY, k[0]) )
 
