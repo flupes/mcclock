@@ -16,7 +16,7 @@ fi
 echo "starting network services..."
 /etc/init.d/networking start
 
-for i in `seq 1 10` ; do
+for i in `seq 1 12` ; do
     sleep 1
     ping -c 1 $check_host > /dev/null
     ret=$?
