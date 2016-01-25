@@ -23,8 +23,28 @@ class CharDisplay(object):
     def __init__(self):
         self.lcd = LCD.Adafruit_CharLCDPlate()
         self.enable(True)
+	self.custom_chars()
         self.static_msg(1, "Hello", 6)
         self.static_msg(2, "World", 6)
+
+    def custom_chars(self):
+	# great generator at: http://www.quinapalus.com/hd44780udg.html
+	# 0: play
+	self.lcd.create_char(0, [24,28,30,31,30,28,24,0])
+	# 1: pause
+	self.lcd.create_char(1, [27,27,27,27,27,27,27,0])
+        # 2: left_empty
+	self.lcd.create_char(2, [31,16,16,16,16,16,31,0])
+	# 3: left_half
+	self.lcd.create_char(3, [31,16,28,28,28,16,31,0])
+	# 4: left_full
+	self.lcd.create_char(4, [31,16,31,31,31,16,31,0])
+	# 5: right_empty
+	self.lcd.create_char(5, [31,1,1,1,1,1,31,0])
+	# 6: right_half
+	self.lcd.create_char(6, [31,1,25,25,25,1,31,0])
+	# 7: right_full
+	self.lcd.create_char(7, [31,1,31,31,31,1,31,0])
 
     def scroll_msg(self, line, msg, period):
         if (line>0) and (line<=self.NUMBER_LINES):
