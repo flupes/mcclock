@@ -17,12 +17,14 @@ class CharDisplay(object):
     positions = [0 for x in range(NUMBER_LINES)]
     indices = [0 for x in range(NUMBER_LINES)]
     #indices = [[0 for x in range(2)] for y in range(NUMBER_LINES)]
-        
+    state = None
+    color = [ 1, 1, 0 ]
+    
     def __init__(self):
         self.lcd = LCD.Adafruit_CharLCDPlate()
-        self.lcd.clear()
-        self.static_msg(1, "Hello", 5)
-        self.static_msg(2, "World", 5)
+        self.enable(True)
+        self.static_msg(1, "Hello", 6)
+        self.static_msg(2, "World", 6)
 
     def scroll_msg(self, line, msg, period):
         if (line>0) and (line<=self.NUMBER_LINES):
@@ -70,6 +72,18 @@ class CharDisplay(object):
                 self.lcd.message((self.lines[l])[p:p+self.NUMBER_CHARS])
             else:
                 self.lcd.message( (self.lines[l])[p:s]+(self.lines[l])[0:-w] )
+
+    def enable(self, state):
+        if self.state != state:
+            self.state = state
+            if state:
+                self.lcd.enable_display(True)
+                self.lcd.clear()
+                self.lcd.set_color(self.color[0], self.color[1], self.color[2])
+            else:
+                self.lcd.clear()
+                self.lcd.set_color(0, 0, 0)
+                self.lcd.enable_display(False)
                 
     def update(self):
         # tick the display to allow dynamic effects

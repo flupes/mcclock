@@ -19,8 +19,7 @@ for i in range(0,400):
         disp.static_msg(2, "New text on 2nd!", 1)
     time.sleep(0.1)
 
-disp.lcd.clear()
-disp.lcd.set_color(0,0,0)
-disp.lcd.enable_display(False)
+disp.enable(False)
+
 time.sleep(1)
 
