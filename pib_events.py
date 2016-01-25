@@ -27,6 +27,8 @@ class PibEvents(EventsBase):
     MODE_PANDORA = 0
     MODE_SPECIAL = 2
     
+    mode_names = [ 'PANDORA', 'PLAYER', 'SPECIAL', 'ALARM' ]
+
     UPDATE_RATE = 20
     SELECT_DEBOUNCE_PERIOD = 0.1
     ROTARY_DEBOUNCE_PERIOD = 0.3
