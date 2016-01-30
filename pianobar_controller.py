@@ -90,6 +90,54 @@ class PianobarController(object):
                 name = m.group(3)
                 stations.append((num, name))
         return stations
+
+    def process_key(self, key):
+        if self.mode == PianobarController.STATION:
+            if key == KeyboardEvents.KEY_SELECT:
+                self.select_station(station_list[station_index][0])
+                self.mode = PianobarController.PLAYING
+            elif key == KeyboardEvents.KEY_UP:
+                if station_index < len(station_list)-1:
+                    station_index=station_index+1
+                print "current selection =",station_list[station_index][0],
+                print "->",station_list[station_index][1]
+            elif key == KeyboardEvents.KEY_DOWN:
+                if station_index > 0:
+                    station_index=station_index-1
+                print "current selection =",station_list[station_index][0],
+                print "->",station_list[station_index][1]
+        elif self.mode != PianobarController.OFF:
+            if key == KeyboardEvents.KEY_LEFT:
+                self.mode = PianobarController.STATION
+                print "STATION"
+                station_list = self.get_stations()
+                station_index = 0
+                for s in station_list:
+                    if current_station == s[1]:
+                        break;
+                    station_index = station_index+1
+                if station_index == len(station_list):
+                    print "current station not found in list!"
+                    station_index = 1
+                print station_list
+                print "current station index is:", station_index
+            elif key == KeyboardEvents.KEY_SELECT:
+                if self.mode == PianobarController.PLAYING:
+                    print "PAUSE"
+                    self.pause()
+                elif self.mode == PianobarController.PAUSED:
+                    print "PLAY"
+                    self.play()
+            elif key == KeyboardEvents.KEY_RIGHT:
+                print "NEXT"
+                self.next()
+            elif key == KeyboardEvents.KEY_UP:
+                print "LOVE"
+                self.love()
+            elif key == KeyboardEvents.KEY_DOWN:
+                print "TIRED"
+                self.tired()
+
     
     def update(self):
         # Process output from pianobar
