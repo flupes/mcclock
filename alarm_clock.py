@@ -1,12 +1,18 @@
 import time
 import datetime
+import random
+import glob
+import vlc
 
 # Hardcode some modules path to simplify
 import sys
 basedir='/home/pi/pkgs'
 sys.path.append(basedir+'/Adafruit-Raspberry-Pi-Python-Code/Adafruit_LEDBackpack')
-
 from Adafruit_7Segment import SevenSegment
+
+# List of songs
+musicdir = '/home/pi/Music/AlarmClock'
+songs = glob.glob(musicdir+'/*.mp3')
 
 class AlarmClock(object):
 
@@ -21,6 +27,10 @@ class AlarmClock(object):
         (datetime.time(9,00), "CreepersGonnaCreep.mp3")
     ]
 
+    number_of_wakeup_songs = 5
+    volume_rampup_time = 45
+    current_sw_volume = 0
+    
     def __init__(self):
         # Initialize the 7 segment display
         self.segment = SevenSegment(address=0x70)
@@ -44,6 +54,13 @@ class AlarmClock(object):
         else :
             self.ringed_today = False
 
+        # Configure a VLC player
+        self.player = vlc.MediaPlayer()
+
+        # MediaListPlayer
+        self.mlplayer = vlc.MediaListPlayer()
+        self.mlplayer.set_media_player(self.player)
+        self.alarm_start_time = None
         
     def message(self, msg, delay):
         for i in range(len(msg)) :
@@ -63,7 +80,30 @@ class AlarmClock(object):
         if (level < 16) and (level >=0):
             self.brightness_level = level
             self.segment.disp.setBrightness(level)
-            
+
+    def play_alarm(self):
+        global songs
+        # Pick 5 random songs from the list
+        pl = list(songs)
+        random.shuffle(pl)
+        pl = pl[0:self.number_of_wakeup_songs]
+        print("play list for day "+str(datetime.datetime.now().day)+":")
+        print(pl)
+        mediaList = vlc.MediaList(pl)
+        self.mlplayer.set_media_list(mediaList)
+        self.current_sw_volume = 0
+        self.player.audio_set_volume(0)
+        self.alarm_start_time = time.time()
+        self.mlplayer.play()
+                            
+        return True
+
+    def enable(self, state):
+        if self.alarm_enabled != state:
+            self.alarm_enabled = state
+            if state == False:
+                self.mlplayer.stop()
+                
     def update(self):
         t = time.time()
         now = datetime.datetime.now()    
@@ -93,7 +133,17 @@ class AlarmClock(object):
             if not self.ringed_today :
                 if now.time() > self.wakeup[now.weekday()][0] :
                     alarm = True
+                    self.play_alarm()
                     self.ringed_today = True
+
+        # Ramp up volume if necessary
+        if self.alarm_start_time is not None:
+            if self.current_sw_volume < 96:
+                elapsed = time.time()-self.alarm_start_time
+                volume = int( round( 96 * elapsed / self.volume_rampup_time ) )
+                if (volume - self.current_sw_volume) > 0:
+                    self.player.audio_set_volume(volume)
+                    self.current_sw_volume = volume
                     
         # Update alarm state for new day
         if self.current_day != now.day :
