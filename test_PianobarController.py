@@ -17,11 +17,11 @@ def clean_exit(signum, frame):
 #signal.signal(signal.SIGINT, clean_exit)
 
 print "starting pianobar test application"
+print "3 = quit / 2 = launch / 1 = stop"
+print "wasdx keys for control"
+print "+/- for volume"
 
 counter = 0
-station_list = []
-station_index = 1
-current_station = None
 
 # main loop
 while up:
@@ -58,7 +58,6 @@ while up:
             print "timing:",timing
 
     if station is not None:
-        current_station = station
         print "got new station:", station
     
     # wait a little bit before processing the next events
