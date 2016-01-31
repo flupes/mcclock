@@ -2,6 +2,7 @@ import math
 import commands
 
 basedir='/home/pi/code'
+hw_volume_level = (0, 0)
 
 def is_wired():
     # Identify if a network cable is plugged or not
@@ -50,15 +51,21 @@ def power_usb_bus(desired_state):
 
 
 def set_hw_volume(input):
+    global hw_volume_level
+    
     if input < 1.0:
         vol = 0
     else:
         vol = round(50.0*math.log10(0.96*input))
-    print "pot returned:",input,"-> volume=",vol
+    print "linear input volume",input,"-> log output volume=",vol,"%"
     cmd = 'amixer cset numid=3 '+str(vol)+'%'
     ret = commands.getstatusoutput(cmd)
     if ret[0] != 0:
         print "command [",cmd,"]failed"
-        return None
+    else:
+        hw_volume_level = (input, vol)
+        
+def get_hw_volume():
+    global hw_volume_level
+    return hw_volume_level
 
-    return input
