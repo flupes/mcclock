@@ -11,7 +11,7 @@ class PianobarController(object):
     PAUSED = 2
     STATION = 3
 
-    PIANOBAR_CMD = os.environ['HOME']+'/devel/pianobar/pianobar'
+    PIANOBAR_CMD = 'sudo -u pi pianobar'
     
     station_list = []
     station_index = 1

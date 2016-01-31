@@ -7,6 +7,8 @@ up = True
 ke = KeyboardEvents()
 piano = PianobarController()
 
+piano.PIANOBAR_CMD = os.environ['HOME']+'/devel/pianobar/pianobar'
+
 def clean_exit(signum, frame):
     signal.signal(signal.SIGINT, original_sigint)
     up = False
