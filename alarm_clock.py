@@ -10,6 +10,8 @@ basedir='/home/pi/pkgs'
 sys.path.append(basedir+'/Adafruit-Raspberry-Pi-Python-Code/Adafruit_LEDBackpack')
 from Adafruit_7Segment import SevenSegment
 
+from utilities import set_hw_volume, get_hw_volume
+
 # List of songs
 musicdir = '/home/pi/Music/AlarmClock'
 songs = glob.glob(musicdir+'/*.mp3')
@@ -30,6 +32,8 @@ class AlarmClock(object):
     number_of_wakeup_songs = 5
     volume_rampup_time = 45
     current_sw_volume = 0
+
+    wakeup_volume_limits = (15, 30)
     
     def __init__(self):
         # Initialize the 7 segment display
@@ -87,7 +91,7 @@ class AlarmClock(object):
         pl = list(songs)
         random.shuffle(pl)
         pl = pl[0:self.number_of_wakeup_songs]
-        print("play list for day "+str(datetime.datetime.now().day)+":")
+        print("play list for day "+str(datetime.datetime.now().weekday())+":")
         print(pl)
         mediaList = vlc.MediaList(pl)
         self.mlplayer.set_media_list(mediaList)
@@ -133,14 +137,21 @@ class AlarmClock(object):
             if not self.ringed_today :
                 if now.time() > self.wakeup[now.weekday()][0] :
                     alarm = True
+                    low = self.wakeup_volume_limits[0]
+                    high = self.wakeup_volume_limits[1]
+                    vol = get_hw_volume()
+                    if vol[0] < low:
+                        set_hw_volume(low)
+                    if vol[0] > high:
+                        set_hw_volume(high)
                     self.play_alarm()
                     self.ringed_today = True
 
         # Ramp up volume if necessary
         if self.alarm_start_time is not None:
-            if self.current_sw_volume < 96:
+            if self.current_sw_volume < 90:
                 elapsed = time.time()-self.alarm_start_time
-                volume = int( round( 96 * elapsed / self.volume_rampup_time ) )
+                volume = int( round( 90 * elapsed / self.volume_rampup_time ) )
                 if (volume - self.current_sw_volume) > 0:
                     self.player.audio_set_volume(volume)
                     self.current_sw_volume = volume

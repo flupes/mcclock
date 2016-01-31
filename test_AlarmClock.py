@@ -3,6 +3,7 @@ import signal
 import datetime
 
 from alarm_clock import AlarmClock
+from utilities import set_hw_volume
 
 clock = AlarmClock()
 up = True
@@ -21,6 +22,8 @@ clock.alarm_enabled = True
 clock.ringed_today = False
 clock.number_of_wakeup_songs = 2
 clock.volume_rampup_time = 20
+
+set_hw_volume(5)
 
 clock.message([0x01, 0xC1, 0x00, 0x3E, 0x73], 3)
 
