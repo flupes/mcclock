@@ -89,7 +89,7 @@ class PibEvents(EventsBase):
         # queue if significant changes
         if abs(self.volume-vol) > self.VOL_TOLERANCE:
             self.volume = vol
-            self.queue.put_nowait( (self.VOLUME, self.volume) )
+            self.add_event( (self.VOLUME, self.volume) )
 
     def calibrate_joystick(self):
         samples=6
@@ -114,7 +114,7 @@ class PibEvents(EventsBase):
                 axis = 100*(val-self.mid_pot[i])/(1023-self.mid_pot[i])
             if abs(axis-self.joystick[i])>2:
                 self.joystick[i] = axis
-                self.queue.put_nowait( (self.JOYSTICK, i, axis) )
+                self.add_event( (self.JOYSTICK, i, axis) )
 
         for k in self.keys:
             current_state = k[3]
@@ -128,7 +128,7 @@ class PibEvents(EventsBase):
             else: # current HIGH state
                 if self.joystick[channel]*factor < low_threshold:
                     k[3] = self.LOW
-                    self.queue.put_nowait( (self.KEY, k[0]) )
+                    self.add_event( (self.KEY, k[0]) )
 
     def read_rotary_selector(self):
         v = 0
@@ -148,15 +148,15 @@ class PibEvents(EventsBase):
             
         if (self.rotary_count == 0) and (self.rotary_new != self.rotary_state):
             self.rotary_state = self.rotary_new
-            self.queue.put_nowait( (self.MODE, b) )
+            self.add_event( (self.MODE, b) )
             
         s = self.select_switch.debounce()
         if self.select_state != s:
             self.select_state = s
             # event only on release
             if self.select_state == self.HIGH:
-                self.queue.put_nowait( (self.KEY, self.KEY_SELECT) )
-            
+                self.add_event( (self.KEY, self.KEY_SELECT) )
+                
     def monitor_events(self):
         stat_period = 10
         missed_ticks = 0

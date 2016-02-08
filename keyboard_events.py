@@ -66,39 +66,39 @@ class KeyboardEvents(EventsBase):
             c = getch()
             #c = readchar.readchar()
             if c == '0':
-                self.queue.put_nowait( (self.KEY, self.KEY_RESET) )
+                self.add_event( (self.KEY, self.KEY_RESET) )
             elif c == 'a':
-                self.queue.put_nowait( (self.KEY, self.KEY_LEFT) )
+                self.add_event( (self.KEY, self.KEY_LEFT) )
             elif c == 'd':
-                self.queue.put_nowait( (self.KEY, self.KEY_RIGHT) )
+                self.add_event( (self.KEY, self.KEY_RIGHT) )
             elif c == 'w':
-                self.queue.put_nowait( (self.KEY, self.KEY_UP) )
+                self.add_event( (self.KEY, self.KEY_UP) )
             elif c == 'x':
-                self.queue.put_nowait( (self.KEY, self.KEY_DOWN) )
+                self.add_event( (self.KEY, self.KEY_DOWN) )
             elif c == 's':
-                self.queue.put_nowait( (self.KEY, self.KEY_SELECT) )
+                self.add_event( (self.KEY, self.KEY_SELECT) )
             elif c == '1':
-                self.queue.put_nowait( (self.MODE, 3) )
+                self.add_event( (self.MODE, 3) )
                 self.mode = 3
             elif c == '2':
-                self.queue.put_nowait( (self.MODE, 2) )
+                self.add_event( (self.MODE, 2) )
                 self.mode = 2
             elif c == '3':
-                self.queue.put_nowait( (self.MODE, 0) )
+                self.add_event( (self.MODE, 0) )
                 self.mode = 0
             elif c == '4':
-                self.queue.put_nowait( (self.MODE, 1) )
+                self.add_event( (self.MODE, 1) )
                 self.mode = 1
             elif c== '+' :
                 self.volume = self.volume+1
                 if self.volume > 10:
                     self.volume = 10
-                self.queue.put_nowait( (self.VOLUME, self.volume) )
+                self.add_event( (self.VOLUME, self.volume) )
             elif c== '-' :
                 if self.volume < 0:
                     self.volume = 0
                 self.volume = self.volume-1
-                self.queue.put_nowait( (self.VOLUME, self.volume) )
+                self.add_event( (self.VOLUME, self.volume) )
             
     def stop(self):
         self.terminate.set()
