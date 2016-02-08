@@ -59,10 +59,15 @@ class CharDisplay(object):
                 print "scrolling message does not need to scroll!"
             self.__draw__(line)
         
-    def static_msg(self, line, msg, pos):
+    def static_msg(self, line, msg, pos, flush=False):
         if (line>0) and (line<=self.NUMBER_LINES):
             line = line -1
             pos = pos - 1
+            if flush:
+                remaining = self.NUMBER_CHARS-pos-len(msg)+1
+                if remaining > 0:
+                    for i in range(0,remaining):
+                        msg = msg+' '
             self.lines[line] = msg
             self.periods[line] = 0
             self.positions[line] = pos
