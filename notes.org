@@ -1,12 +1,81 @@
+* Setup Pi-B
+** Download "Raspbian Jessie Lite" image from:
+   https://www.raspberrypi.org/downloads/raspbian/
+** Check SHA sum, unzip
+** Burn to SD card:
+   https://www.raspberrypi.org/documentation/installation/installing-images/mac.md
+** Boot, login with pi/raspberry
+*** keyboard and display required with not -lite img
+*** username:pi / password:raspberry
+** Configure with raspi-config
+*** Resize partition
+*** Change password
+*** Set Hostname
+*** Enable SPI + load SPI kernel module
+*** Enable I2C + load I2C kernel module
+*** Change Timezone (from Internationalization Options)
+*** Reboot
+** Update distro
+   - sudo apt-get update
+   - sudo apt-get -y  v upgrade
+** Install base tools
+   - sudo apt-get install htop byobu cmake git rsync mpg321
+   - sudo apt-get install emacs24-nox emacs24-el
+** Configure the default sound card as the QSB USB speaker
+   - this changed from raspbian-wheezy!
+   - check sound cards id with:
+   `cat /proc/asound/modules`
+   - add this config file in your home directory:
+#+BEGIN_SRC bash
+pcm.!default {
+    type hw
+    card 1
+}
+ctl.!default {
+    type hw
+    card 1
+}
+#+END_SRC
+** Install required packages
+#+BEGIN_SRC bash
+# sudo apt-get install build-essentials
+# (seems to be installed by default on raspbian-jessie-lite)
+# sudo apt-get install hdparm bonnie++
+# (for disk performance test)
+sudo apt-get install vlc-nox libvlc-dev i2c-tools libi2c-dev
+sudo apt-get install python-setuptools python-pip python-dev python-smbus
+#+END_SRC
+** Install python libraries (mostly Adafruit)
+#+BEGIN_SRC bash
+cd pkgs
+git clone https://github.com/adafruit/Adafruit_Python_GPIO.git
+cd Adafruit_Python_GPIO
+sudo python setup.py install
+cd ..
+git clone https://github.com/adafruit/Adafruit_Python_CharLCD.git
+cd Adafruit_Python_CharLCD
+sudo python setup.py install
+cd ..
+git clone https://github.com/adafruit/Adafruit_Python_LED_Backpack
+cd Adafruit_Python_LED_Backpack
+sudo python setup.py install
+cd ..
+git clone https://github.com/oaubert/python-vlc
+cd python-vlc
+sudo python setup.py install
+#+END_SRC
+** Configure environment
+*** Get ~/.gitconfig
 * How to install pianobar on RPi
   http://www.lanmaster53.com/2014/05/raspberry-pi-pianobar/
 #+begin_src bash
 # install dependencies
-sudo apt-get install git libao-dev libgcrypt11-dev libgnutls-dev libfaad-dev libmad0-dev libjson0-dev make pkg-config
+sudo apt-get install libao-dev libfaad-dev libmad0-dev libjson0-dev
+sudo apt-get install libgcrypt20-dev libgnutls28-dev libcurl4-gnutls-dev
 # install FFmpeg manually from source
 git clone https://github.com/FFmpeg/FFmpeg.git
 cd FFmpeg
-./configure
+./configure --disable-ffserver
 make
 sudo make install
 cd ..
@@ -35,6 +104,13 @@ amixer cset numid=3 50%
 #   /etc/modprobe.d/alsa-base.conf
 # comment out the line:
 #   options snd-usb-audio index=-2
+
+# create the file:
+#   ~/.libao
+# with the following content:
+default_driver=alsa
+id=1
+quiet
 #+end_src
 
 * Use the Pi hardware SPI for MCP3008 analog input
