@@ -17,3 +17,10 @@ class EventsBase(object):
     queue = Queue.Queue(32)
     volume = 5
     mode = 0
+
+    def add_event(self, event):
+        try:
+            self.queue.put_nowait( event )
+        except Queue.Full:
+            print "event queue full: abnormal condition!"
+
