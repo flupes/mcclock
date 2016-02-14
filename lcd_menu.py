@@ -29,7 +29,9 @@ class LcdMenu(object):
     
     def process_key(self, key):
         """Process the given key event
-        Returns the menu value if selected, -1 otherwise"""
+        Returns the menu value if selected, None otherwise,
+        or -1 if the user wants to leave the menu without
+        selection (left key)"""
         if key == EventsBase.KEY_RIGHT:
             print "RIGHT"
             self.display.lcd.clear()
