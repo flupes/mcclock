@@ -47,6 +47,12 @@ class CharDisplay(object):
 	self.lcd.create_char(7, [31,1,31,31,31,1,31,0])
 
     def scroll_msg(self, line, msg, period):
+        """
+        Display a scrolling message on the desired line.
+        line -- line that will display the scroll message [1..NUNBER_LINES]
+        msg -- the string to display
+        period -- delay (in seconds) before shifting by one character
+        """
         if (line>0) and (line<=self.NUMBER_LINES):
             line = line - 1
             self.lines[line] = msg + '   '
@@ -60,6 +66,14 @@ class CharDisplay(object):
             self.__draw__(line)
         
     def static_msg(self, line, msg, pos, flush=False):
+        """
+        Display a static message on the desired line.
+        line -- line that will display the scroll message [1..NUNBER_LINES]
+        msg -- the string to display
+        pos -- the character position where to start the message [1..NUMBER_CHAR]
+        flush -- optional argument that will clear (or not) the rest of the line
+                if the message + position is shorter than the display.
+        """
         if (line>0) and (line<=self.NUMBER_LINES):
             line = line -1
             pos = pos - 1
@@ -74,13 +88,58 @@ class CharDisplay(object):
             self.__draw__(line)
 
     def timed_msg(self, line, msg, duration):
+        """
+        Display temporarly a message on the desired line.
+        line -- the line to use for the message [1..NUMBER_LINE]
+        msg -- the string to display
+        duration -- the duration (in seconds) the message should be 
+                        display before resuming the regular display
+        """
         if (line>0) and (line<=self.NUMBER_LINES):
             line = line - 1
             msg = msg + "                        "
             self.tempmsgs[line] = msg[0:self.NUMBER_CHARS]            
             self.expirations[line] = time.time()+duration
             self.__draw__(line)
-            
+                            
+    def clear(self):
+        """Completely clear the display"""
+        # TODO
+        # it seems there should be more to be done here!
+        # like disable the scrolling/temporary message...
+        self.lcd.clear()
+        
+    def enable(self, state):
+        """Enable or disable the display (disable ~= turn off)"""
+        if self.state != state:
+            self.state = state
+            if state:
+                self.lcd.enable_display(True)
+                self.lcd.clear()
+                self.lcd.set_color(self.color[0], self.color[1], self.color[2])
+            else:
+                self.lcd.clear()
+                self.lcd.set_color(0, 0, 0)
+                self.lcd.enable_display(False)
+                
+    def update(self):
+        """Tick the display to allow dynamic effects"""
+        now = time.time()
+        for l in range(0, self.NUMBER_LINES):
+            if self.expirations[l] > 0:
+                if now > (self.expirations[l]):
+                    self.expirations[l] = 0
+                    self.lcd.set_cursor(0, l)
+                    self.lcd.message("                        ")
+                    self.__draw__(l)
+            if self.periods[l] > 0:
+                if now > (self.timestamps[l]):
+                    self.timestamps[l] = now+self.periods[l]
+                    self.indices[l] = self.indices[l] + 1
+                    if self.indices[l] >= len(self.lines[l]):
+                        self.indices[l] = 0
+                    self.__draw__(l)                    
+                        
     def __draw__(self, l):
         if self.expirations[l] > 0:
             self.lcd.set_cursor(0, l)
@@ -98,34 +157,3 @@ class CharDisplay(object):
             else:
                 self.lcd.message( (self.lines[l])[p:s]+(self.lines[l])[0:-w] )
 
-    def enable(self, state):
-        if self.state != state:
-            self.state = state
-            if state:
-                self.lcd.enable_display(True)
-                self.lcd.clear()
-                self.lcd.set_color(self.color[0], self.color[1], self.color[2])
-            else:
-                self.lcd.clear()
-                self.lcd.set_color(0, 0, 0)
-                self.lcd.enable_display(False)
-                
-    def update(self):
-        # tick the display to allow dynamic effects
-        now = time.time()
-        for l in range(0, self.NUMBER_LINES):
-            if self.expirations[l] > 0:
-                if now > (self.expirations[l]):
-                    self.expirations[l] = 0
-                    self.lcd.set_cursor(0, l)
-                    self.lcd.message("                        ")
-                    self.__draw__(l)
-            if self.periods[l] > 0:
-                if now > (self.timestamps[l]):
-                    self.timestamps[l] = now+self.periods[l]
-                    self.indices[l] = self.indices[l] + 1
-                    if self.indices[l] >= len(self.lines[l]):
-                        self.indices[l] = 0
-                    self.__draw__(l)
-                    
-                        
