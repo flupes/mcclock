@@ -108,6 +108,11 @@ class AlarmClock(object):
             if state == False:
                 self.mlplayer.stop()
                 
+    def set_music_dir(self, directory):
+        song_list = sort(glob.glob(directory+'/*.mp3'))
+        mediaList = vlc.MediaList(song_list)
+        self.mlplayer.set_media_list(mediaList)
+
     def update(self):
         t = time.time()
         now = datetime.datetime.now()    

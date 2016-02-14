@@ -71,6 +71,7 @@ def switch_to_player(prev_mode):
     update_alarm_state(prev_mode, False)
     update_pandora_state(prev_mode, False)
     update_usb_power(PibEvents.MODE_PLAYER, False)
+    clock.set_music_dir(clock.musicdir)
     disp.enable(True)
     
 def switch_to_pandora(prev_mode):
@@ -84,7 +85,25 @@ def switch_to_special(prev_mode):
     update_pandora_state(prev_mode, False)
     update_usb_power(PibEvents.MODE_SPECIAL, True)
     disp.enable(True)
-    
+
+def process_player_key(k):
+    if k == PibEvents.KEY_SELECT:
+        if player.is_playing() :
+            clock.mlplayer.pause()
+            print("pausing player")
+        else :
+            clock.mlplayer.play()
+            print("start to play song: "+player.get_media().get_mrl())
+
+    elif k == PibEvents.KEY_LEFT:
+        clock.mlplayer.previous()
+        print("move to previous song: "+player.get_media().get_mrl())
+
+    elif k == PibEvents.KEY_RIGHT:
+        clock.mlplayer.next()
+        print("move to next song: "+player.get_media().get_mrl())
+
+
 while up:
     while pe.queue.empty() == False:
         e = pe.queue.get_nowait()
@@ -111,12 +130,16 @@ while up:
             
         elif e[0] == PibEvents.KEY:
             print "detected keypress:", e[1]
-            if mode == PibEvents.MODE_PANDORA:
+            if mode == PibEvents.MODE_ALARM:
+                print "skip key events in alarm mode"
+            elif mode == PibEvents.MODE_PLAYER:
+                player_process_key(e[1])
+            elif mode == PibEvents.MODE_PANDORA:
                 piano.process_key(e[1])
-                
-            if (mode==PibEvents.MODE_SPECIAL) and (e[1]==PibEvents.KEY_DOWN):
-                # special condition to exit
-                up = False
+            elif mode==PibEvents.MODE_SPECIAL:
+                if e[1]==PibEvents.KEY_DOWN:
+                    # special condition to exit
+                    up = False
 
     alarm = clock.update()
     if alarm == True:
