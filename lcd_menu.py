@@ -30,10 +30,14 @@ class LcdMenu(object):
     def process_key(self, key):
         """Process the given key event
         Returns the menu value if selected, -1 otherwise"""
-        if key == EventsBase.KEY_SELECT:
-            print "SELECT"
+        if key == EventsBase.KEY_RIGHT:
+            print "RIGHT"
             self.display.lcd.clear()
             return self.entries[self.selection][0]
+        elif key == EventsBase.KEY_LEFT:
+            print "LEFT"
+            self.display.lcd.clear()
+            return -1
         elif key == EventsBase.KEY_DOWN:
             print "DOWN"
             self.update_display(self.selection+1)

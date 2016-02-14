@@ -17,6 +17,9 @@ while up:
 
         if e[0] == PibEvents.KEY:
             selection = menu.process_key(e[1])
+            if selection == -1:
+                up = False
+                print "exit menu without selection"
             if selection is not None:
                 up = False
                 print "menu returned:",selection
