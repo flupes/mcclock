@@ -34,11 +34,11 @@ class LcdMenu(object):
         selection (left key)"""
         if key == EventsBase.KEY_RIGHT:
             print "RIGHT"
-            self.display.lcd.clear()
+            self.display.clear()
             return self.entries[self.selection][0]
         elif key == EventsBase.KEY_LEFT:
             print "LEFT"
-            self.display.lcd.clear()
+            self.display.clear()
             return -1
         elif key == EventsBase.KEY_DOWN:
             print "DOWN"
