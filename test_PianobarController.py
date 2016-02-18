@@ -1,11 +1,14 @@
+import os
 import time
 import signal
 from keyboard_events import KeyboardEvents
+from text_display import TextDisplay
 from pianobar_controller import PianobarController
 
 up = True
 ke = KeyboardEvents()
-piano = PianobarController()
+display = TextDisplay()
+piano = PianobarController(display)
 
 piano.PIANOBAR_CMD = os.environ['HOME']+'/devel/pianobar/pianobar'
 
@@ -61,6 +64,8 @@ while up:
 
     if station is not None:
         print "got new station:", station
+
+    display.update() # just for completeness (does nothing with TextDisplay)
     
     # wait a little bit before processing the next events
     time.sleep(0.2)

@@ -4,6 +4,7 @@ import time
 import pexpect
 
 from events_base import EventsBase
+from lcd_menu import LcdMenu
 
 class PianobarController(object):
     OFF = 0
@@ -11,12 +12,19 @@ class PianobarController(object):
     PAUSED = 2
     STATION = 3
 
+    STATE = 1
+    SONG = 2
+    STATION = 4
+    TIMING = 8
+    
     PIANOBAR_CMD = 'sudo -u pi pianobar'
     
     station_list = []
     station_index = 1
 
-    def __init__(self):
+    def __init__(self, display):
+        print "initializing PianobarController in OFF state"
+        self.display = display
         self.mode = PianobarController.OFF
         self.pianobar = None
 
@@ -54,10 +62,12 @@ class PianobarController(object):
     def play(self):
         self.pianobar.send('P')
         self.mode = PianobarController.PLAYING
+        self.update_display(self.STATE)
 
     def pause(self):
         self.pianobar.send('S')
         self.mode = PianobarController.PAUSED
+        self.update_display(self.STATE)
 
     def next(self):
         self.pianobar.send('n')
@@ -95,36 +105,53 @@ class PianobarController(object):
                 stations.append((num, name))
         return stations
 
+    def update_display(self, what):
+        if (what & self.STATION) or (what & self.STATE):
+            print "update station or state"
+            if self.mode == PianobarController.PLAYING:
+                msg = '\x00 | ' + self.current_station
+            else:
+                msg = '\x01 | ' + self.current_station
+            self.display.static_msg(1, msg, 1)
+
+        if (what & self.SONG) or (what & self.TIMING):
+            print "update song or timing"
+            msg = self.current_song[1] + ' | ' + self.current_song[0]
+            self.display.scroll_msg(1, msg, 50)
+        
+    def station_menu(self):
+        self.station_list = self.get_stations()
+        self.station_index = 0
+        for s in self.station_list:
+            if self.current_station == s[1]:
+                break;
+            self.station_index = self.station_index+1
+        if self.station_index == len(self.station_list):
+            print "current station not found in list!"
+            self.station_index = 1
+        print self.station_list
+        print "current station index is:", self.station_index
+        self.station_id = self.station_list[self.station_index][0]
+        self.menu = LcdMenu(self.display, self.station_list, self.station_index)
+        
     def process_key(self, key):
         if self.mode == PianobarController.STATION:
-            if key == EventsBase.KEY_SELECT:
-                self.select_station(self.station_list[self.station_index][0])
+            selection = self.menu.process_key(key)
+            if selection is not None:
+                if selection == -1:
+                    # menu exit without selection, however we cannot cancel the
+                    # pianobar station selection, so select the station currently
+                    # played. the side effect is that a new song will start playing
+                    self.select_station(self.station_id)
+                else:
+                    self.select_station(selection)
+                self.display.clear()
                 self.mode = PianobarController.PLAYING
-            elif key == EventsBase.KEY_UP:
-                if self.station_index < len(self.station_list)-1:
-                    self.station_index=self.station_index+1
-                print "current selection =",self.station_list[self.station_index][0],
-                print "->",self.station_list[self.station_index][1]
-            elif key == EventsBase.KEY_DOWN:
-                if self.station_index > 0:
-                    self.station_index=self.station_index-1
-                print "current selection =",self.station_list[self.station_index][0],
-                print "->",self.station_list[self.station_index][1]
         elif self.mode != PianobarController.OFF:
             if key == EventsBase.KEY_LEFT:
                 self.mode = PianobarController.STATION
                 print "STATION"
-                self.station_list = self.get_stations()
-                self.station_index = 0
-                for s in self.station_list:
-                    if self.current_station == s[1]:
-                        break;
-                    self.station_index = self.station_index+1
-                if self.station_index == len(self.station_list):
-                    print "current station not found in list!"
-                    self.station_index = 1
-                print self.station_list
-                print "current station index is:", self.station_index
+                self.station_menu()
             elif key == EventsBase.KEY_SELECT:
                 if self.mode == PianobarController.PLAYING:
                     print "PAUSE"
@@ -172,11 +199,14 @@ class PianobarController(object):
                             if x == 0:
                                 album = self.pianobar.before
                     song=(title, artist, album)
+                    self.current_song = song
+                    self.update_display(self.SONG)
                 elif x == 1:
                     x = self.pianobar.expect(' \| ')
                     if x == 0:
                         station = self.pianobar.before
                         self.current_station = station
+                        self.update_display(self.STATION)
                 elif x == 2:
                     # Time doesn't include newline - prints over itself.
                     x = self.pianobar.expect('\r', timeout=1)
