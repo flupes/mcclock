@@ -9,7 +9,7 @@ class LcdMenu(object):
         """ Initialize the menu.
         display -- the display target
         entries -- a list of tuples composing the menu elements (id,string)
-        selection -- the active selection (index in the dictionary
+        selection -- the active selection (index in the dictionary)
         """
         self.display = display
         self.entries = entries
