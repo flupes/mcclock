@@ -14,7 +14,7 @@ up = True
 pe = PibEvents()
 disp = CharDisplay()
 clock = AlarmClock()
-piano = PianobarController()
+piano = PianobarController(disp)
 
 mode = pe.rotary_state
 current_volume_level = 0
@@ -72,6 +72,8 @@ def switch_to_player(prev_mode):
     update_pandora_state(prev_mode, False)
     update_usb_power(PibEvents.MODE_PLAYER, False)
     clock.set_music_dir(clock.musicdir)
+    print "start player"
+    clock.mlplayer.play()
     disp.enable(True)
     
 def switch_to_pandora(prev_mode):
@@ -85,24 +87,6 @@ def switch_to_special(prev_mode):
     update_pandora_state(prev_mode, False)
     update_usb_power(PibEvents.MODE_SPECIAL, True)
     disp.enable(True)
-
-def process_player_key(k):
-    if k == PibEvents.KEY_SELECT:
-        if player.is_playing() :
-            clock.mlplayer.pause()
-            print("pausing player")
-        else :
-            clock.mlplayer.play()
-            print("start to play song: "+player.get_media().get_mrl())
-
-    elif k == PibEvents.KEY_LEFT:
-        clock.mlplayer.previous()
-        print("move to previous song: "+player.get_media().get_mrl())
-
-    elif k == PibEvents.KEY_RIGHT:
-        clock.mlplayer.next()
-        print("move to next song: "+player.get_media().get_mrl())
-
 
 while up:
     while pe.queue.empty() == False:
@@ -133,7 +117,7 @@ while up:
             if mode == PibEvents.MODE_ALARM:
                 print "skip key events in alarm mode"
             elif mode == PibEvents.MODE_PLAYER:
-                player_process_key(e[1])
+                clock.process_key(e[1])
             elif mode == PibEvents.MODE_PANDORA:
                 piano.process_key(e[1])
             elif mode==PibEvents.MODE_SPECIAL:

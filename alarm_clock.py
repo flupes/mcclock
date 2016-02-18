@@ -12,9 +12,7 @@ from Adafruit_7Segment import SevenSegment
 
 from utilities import set_hw_volume, get_hw_volume
 
-# List of songs
-musicdir = '/home/pi/Music/AlarmClock'
-songs = glob.glob(musicdir+'/*.mp3')
+from events_base import EventsBase
 
 class AlarmClock(object):
 
@@ -29,12 +27,16 @@ class AlarmClock(object):
         (datetime.time(9,00), "CreepersGonnaCreep.mp3")
     ]
 
+    # List of songs
+    musicdir = '/home/pi/Music/AlarmClock'
+    songs = glob.glob(musicdir+'/*.mp3')
+
     number_of_wakeup_songs = 5
     volume_rampup_time = 45
     current_sw_volume = 0
 
     wakeup_volume_limits = (15, 30)
-    
+        
     def __init__(self):
         # Initialize the 7 segment display
         self.segment = SevenSegment(address=0x70)
@@ -109,9 +111,26 @@ class AlarmClock(object):
                 self.mlplayer.stop()
                 
     def set_music_dir(self, directory):
-        song_list = sort(glob.glob(directory+'/*.mp3'))
+        song_list = glob.glob(directory+'/*.mp3')
         mediaList = vlc.MediaList(song_list)
         self.mlplayer.set_media_list(mediaList)
+
+    def process_key(self, k):
+        if k == EventsBase.KEY_SELECT:
+            if self.player.is_playing() :
+                self.mlplayer.pause()
+                print("pausing player")
+            else :
+                self.mlplayer.play()
+                print("start to play song: "+player.get_media().get_mrl())
+
+        elif k == EventsBase.KEY_LEFT:
+            self.mlplayer.previous()
+            print("move to previous song: "+player.get_media().get_mrl())
+
+        elif k == EventsBase.KEY_RIGHT:
+            self.mlplayer.next()
+            print("move to next song: "+player.get_media().get_mrl())
 
     def update(self):
         t = time.time()
