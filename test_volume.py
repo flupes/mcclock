@@ -6,6 +6,7 @@ import commands
 import vlc
 
 from pib_events import PibEvents
+from utilities import set_hw_volume
 
 up = True
 
@@ -29,24 +30,12 @@ mlplayer.set_media_list(mediaList)
 mlplayer.play()
 playing = True
 
-def set_volume(input):
-    if input < 1.0:
-        vol = 0
-    else:
-        vol = round(50.0*math.log10(0.96*input))
-    print "pot returned:",input,"-> volume=",vol
-    cmd = 'amixer cset numid=3 '+str(vol)+'%'
-    ret = commands.getstatusoutput(cmd)
-    if ret[0] != 0:
-        print "command [",cmd,"]failed"
-
-
 while up:
     while pe.queue.empty() == False:
         e = pe.queue.get_nowait()
         
         if e[0] == PibEvents.VOLUME:
-            set_volume(e[1])
+            set_hw_volume(e[1])
             
         elif e[0] == PibEvents.JOYSTICK:
             print "joystick: axis",e[1],"->",e[2]
