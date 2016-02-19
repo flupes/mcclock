@@ -29,7 +29,7 @@ class PibEvents(EventsBase):
     
     mode_names = [ 'PANDORA', 'PLAYER', 'SPECIAL', 'ALARM' ]
 
-    UPDATE_RATE = 20
+    UPDATE_RATE = 24
     SELECT_DEBOUNCE_PERIOD = 0.1
     ROTARY_DEBOUNCE_PERIOD = 0.3
     ROTARY_STABLE_PERIOD = 1.2
@@ -141,12 +141,12 @@ class PibEvents(EventsBase):
         b = self.read_rotary_selector()
         if b != self.rotary_new:
             self.rotary_new = b
-            self.rotary_count = self.ROTARY_STABLE_PERIOD*self.UPDATE_RATE
+            self.rotary_count = int(self.ROTARY_STABLE_PERIOD*self.UPDATE_RATE)
         else:
             if self.rotary_count > 0:
                 self.rotary_count = self.rotary_count - 1
             
-        if (self.rotary_count == 0) and (self.rotary_new != self.rotary_state):
+        if (self.rotary_count <= 0) and (self.rotary_new != self.rotary_state):
             self.rotary_state = self.rotary_new
             self.add_event( (self.MODE, b) )
             
