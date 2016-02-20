@@ -104,10 +104,18 @@ class AlarmClock(object):
                             
         return True
 
+    def play(self):
+        if not self.mlplayer.is_playing():
+            self.mlplayer.play()
+
+    def stop(self):
+        if self.mlplayer.is_playing():
+            self.mlplayer.stop()
+            
     def enable(self, state):
         if self.alarm_enabled != state:
             self.alarm_enabled = state
-            if state == False:
+            if state == True:
                 self.mlplayer.stop()
                 
     def set_music_dir(self, directory):
@@ -122,15 +130,15 @@ class AlarmClock(object):
                 print("pausing player")
             else :
                 self.mlplayer.play()
-                print("start to play song: "+player.get_media().get_mrl())
+                print("start to play song: "+self.player.get_media().get_mrl())
 
         elif k == EventsBase.KEY_LEFT:
             self.mlplayer.previous()
-            print("move to previous song: "+player.get_media().get_mrl())
+            print("move to previous song: "+self.player.get_media().get_mrl())
 
         elif k == EventsBase.KEY_RIGHT:
             self.mlplayer.next()
-            print("move to next song: "+player.get_media().get_mrl())
+            print("move to next song: "+self.player.get_media().get_mrl())
 
     def update(self):
         t = time.time()
