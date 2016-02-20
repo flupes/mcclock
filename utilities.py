@@ -1,7 +1,7 @@
 import math
 import commands
 
-basedir='/home/pi/code'
+basedir='/home/pi/devel'
 hw_volume_level = (0, 0)
 
 def is_wired():
@@ -28,9 +28,10 @@ def power_usb_bus(desired_state):
 
     if desired_state :
         print("Turning the USB bus ON")
-        powerUsbBusCmd = basedir + "/mcclock/usbBusUp.bash"
+        powerUsbBusCmd = "sudo " + basedir + "/mcclock/usbBusUp.bash"
         result = commands.getstatusoutput(powerUsbBusCmd)
         cmdOutput = result[1]
+        #print "Result from:",powerUsbBusCmd,"->",result
         if int(result[0]) == 0:
             network_state = True
             print("network connectivity ok")
@@ -44,9 +45,11 @@ def power_usb_bus(desired_state):
         network_state = None
         if not wired:
             print("Turning the USB bus OFF")
-            powerUsbBusCmd = basedir + "/mcclock/usbBusDown.bash"
+            powerUsbBusCmd = "sudo " + basedir + "/mcclock/usbBusDown.bash"
             cmdOutput = commands.getoutput(powerUsbBusCmd)
-            print("Result from: "+powerUsbBusCmd+" -> "+cmdOutput)
+            #print("Result from: "+powerUsbBusCmd+" -> "+cmdOutput)
+        else:
+            print("Wired mode -> power USB off has no effect")
     return network_state
 
 
@@ -68,4 +71,3 @@ def set_hw_volume(input):
 def get_hw_volume():
     global hw_volume_level
     return hw_volume_level
-
