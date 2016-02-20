@@ -17,7 +17,7 @@ class PianobarController(object):
     STATION = 4
     TIMING = 8
     
-    PIANOBAR_CMD = 'sudo -u pi pianobar'
+    PIANOBAR_CMD = 'pianobar'
     
     station_list = []
     station_index = 1
@@ -56,6 +56,7 @@ class PianobarController(object):
         print "stop pianobar"
         self.pianobar.send('\n')
         self.pianobar.send('q')
+        time.sleep(0.2)
         self.pianobar = None
         self.mode = PianobarController.OFF
             
@@ -109,15 +110,15 @@ class PianobarController(object):
         if (what & self.STATION) or (what & self.STATE):
             print "update station or state"
             if self.mode == PianobarController.PLAYING:
-                msg = '\x00 | ' + self.current_station
+                msg = '\x00 ' + self.current_station
             else:
-                msg = '\x01 | ' + self.current_station
-            self.display.static_msg(1, msg, 1)
+                msg = '\x01 ' + self.current_station
+            self.display.static_msg(1, msg, 1, True)
 
         if (what & self.SONG) or (what & self.TIMING):
             print "update song or timing"
             msg = self.current_song[1] + ' | ' + self.current_song[0]
-            self.display.scroll_msg(1, msg, 50)
+            self.display.scroll_msg(2, msg, 50)
         
     def station_menu(self):
         self.station_list = self.get_stations()
