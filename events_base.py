@@ -13,6 +13,7 @@ class EventsBase(object):
     LIGHT = 2
     VOLUME = 3
     JOYSTICK = 4
+    ROTARY = 5
 
     queue = Queue.Queue(32)
     volume = 5
