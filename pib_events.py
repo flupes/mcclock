@@ -21,16 +21,16 @@ class PibEvents(EventsBase):
 
     # mode values correspond to the selector switch coding:
     # from most left to most right:
-    # 3 -> 2 -> 0 -> 1
+    # 3 -> 1 -> 0 -> 2
     MODE_ALARM = 3
     MODE_PLAYER = 1
     MODE_PANDORA = 0
     MODE_SPECIAL = 2
-    
+
     mode_names = [ 'PANDORA', 'PLAYER', 'SPECIAL', 'ALARM' ]
 
-    UPDATE_RATE = 24
-    SELECT_DEBOUNCE_PERIOD = 0.1
+    UPDATE_RATE = 20
+    SELECT_DEBOUNCE_PERIOD = 0.2
     ROTARY_DEBOUNCE_PERIOD = 0.3
     ROTARY_STABLE_PERIOD = 1.2
             
@@ -45,9 +45,12 @@ class PibEvents(EventsBase):
         for i,p in enumerate(self.ROTARY_SWITCH_PINS):
             self.rotary_switch.append(Debouncer(p,
                                                 int(self.ROTARY_DEBOUNCE_PERIOD*self.UPDATE_RATE)))
-        self.rotary_state = self.read_rotary_selector()
-        print "startup mode =", self.rotary_state
-        self.rotary_new = self.rotary_state
+#        self.rotary_state = self.read_rotary_selector()
+#        print "startup mode =", self.rotary_state
+#        self.rotary_new = self.rotary_state
+        # force to generate one mode event at startup
+        self.rotary_state = -1
+        self.rotary_new = -1
         self.rotary_count = 0
         
         # initialize the inputs
@@ -140,6 +143,7 @@ class PibEvents(EventsBase):
     def process_dinputs(self):
         b = self.read_rotary_selector()
         if b != self.rotary_new:
+            self.add_event( (self.ROTARY, b) )
             self.rotary_new = b
             self.rotary_count = int(self.ROTARY_STABLE_PERIOD*self.UPDATE_RATE)
         else:
