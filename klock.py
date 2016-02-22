@@ -1,6 +1,8 @@
 #!/usr/bin/python -u 
+
 import time
 import threading
+import commands
 
 from pib_events import PibEvents
 from char_display import CharDisplay
@@ -45,13 +47,16 @@ def monitor_reset(char_lcd):
         if count < 0:
             up = False
         time.sleep(1.0)
-        
-    print "detected reset signal!"
-    cmd = "sudo shutdown -h now"
-    res = commands.getstatusoutput(cmd)
-    # should never get there...
-    print cmd,"->",res
 
+    if not up:
+        print "detected reset signal!"
+        cmd = "sudo shutdown -h now"
+        res = commands.getstatusoutput(cmd)
+        # should never get there...
+        print cmd,"->",res
+    else:
+        print "monitor_reset thread terminated normally"
+    
 reset_terminate = threading.Event()
 reset_thread = threading.Thread(name='reset', target=monitor_reset, args=[chlcd.lcd])
 reset_thread.start()
@@ -78,13 +83,14 @@ def enter_alarm():
 
 def exit_alarm():
     print "leaving alarm mode"
+    clock.stop()
     clock.enable(False)
     clock.update()
     
 def enter_player():
     print "entering player mode"
     update_usb_power(False)
-    chlcd.enable(True)
+    chlcd.enable(False)
     clock.set_music_dir(clock.musicdir)
     
 def exit_player():
@@ -137,7 +143,7 @@ while up:
             enter_mode[mode]()
 
         elif e[0] == PibEvents.ROTARY:
-            chlcd.timed_msg(1, PibEvents.mode_names[e[1]], 2)
+            chlcd.timed_msg(1, PibEvents.mode_names[e[1]], 1.5)
 
         elif e[0] == PibEvents.VOLUME:
             current_volume_level = set_hw_volume(e[1])
@@ -163,7 +169,7 @@ while up:
         piano.update()
         
     chlcd.update()
-    time.sleep(0.2)
+    time.sleep(0.3)
 
 print "wait for reset monitor thread to terminate"
 reset_terminate.set()
