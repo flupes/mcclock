@@ -11,11 +11,11 @@ class PibEvents(EventsBase):
 
     POT_CHANNEL = 0
     JOY_CHANNELS = [2, 3]
+    LIGHT_CHANNEL = 5
     SELECT_SWITCH_PIN = 17
     ROTARY_SWITCH_PINS = (22, 27)
-    
     VOL_TOLERANCE = 2
-
+    
     HIGH = 1
     LOW = 0
 
@@ -59,6 +59,8 @@ class PibEvents(EventsBase):
 
         self.volume = 0
         self.joystick = [0, 0]
+        self.light = 0
+        
         # key properties:
         # code, axis_num, axis_dir, state, to_high_threshold, to_low_threshold
         self.keys = [
@@ -94,6 +96,12 @@ class PibEvents(EventsBase):
             self.volume = vol
             self.add_event( (self.VOLUME, self.volume) )
 
+    def process_light_sensor(self):
+        sense = int (self.readadc(self.LIGHT_CHANNEL) / 64)
+        if abs(self.light - sense) > 2:
+            self.light = sense
+            self.add_event( (self.LIGHT, self.light) )
+            
     def calibrate_joystick(self):
         samples=6
         pot_x = 0
@@ -173,6 +181,7 @@ class PibEvents(EventsBase):
             start = time.time()
             self.process_volume_pot()
             self.process_joystick()
+            self.process_light_sensor()
             self.process_dinputs()
             worked_ticks = worked_ticks + 1
             stop = time.time()

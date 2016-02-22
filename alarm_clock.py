@@ -84,6 +84,7 @@ class AlarmClock(object):
 
     def set_brightness(self, level):
         if (level < 16) and (level >=0):
+            print "new lcd brightness =",level
             self.brightness_level = level
             self.segment.disp.setBrightness(level)
 

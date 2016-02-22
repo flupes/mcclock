@@ -25,9 +25,10 @@ exit_mode = [ None, None, None, None ]
 enter_mode = [ None, None, None, None ]
 mode = None
 current_volume_level = 0
+max_leds_brightness = 12
 
+clock.set_brightness(max_leds_brightness)
 clock.message([0x01, 0xC1, 0x00, 0x3E, 0x73], 3)
-clock.set_brightness(6)
 
 time.sleep(0.2)
 chlcd.lcd.home()
@@ -151,7 +152,10 @@ while up:
 
         elif e[0] == PibEvents.VOLUME:
             current_volume_level = set_hw_volume(e[1])
-        
+
+        elif e[0] == PibEvents.LIGHT:
+            clock.set_brightness(e[1]*max_leds_brightness/16)
+                
         elif e[0] == PibEvents.KEY:
             print "detected keypress:", e[1]
             if mode == PibEvents.MODE_ALARM:

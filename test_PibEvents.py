@@ -20,6 +20,9 @@ while up:
 
         elif e[0] == PibEvents.MODE:
             print "new mode =", e[1]
+
+        elif e[0] == PibEvents.LIGHT:
+            print "new light =", e[1]
             
     time.sleep(0.2)
 
