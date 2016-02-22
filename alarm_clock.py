@@ -88,9 +88,8 @@ class AlarmClock(object):
             self.segment.disp.setBrightness(level)
 
     def play_alarm(self):
-        global songs
         # Pick 5 random songs from the list
-        pl = list(songs)
+        pl = list(self.songs)
         random.shuffle(pl)
         pl = pl[0:self.number_of_wakeup_songs]
         print("play list for day "+str(datetime.datetime.now().weekday())+":")
