@@ -4,6 +4,21 @@ import commands
 basedir='/home/pi/devel'
 hw_volume_level = (0, 0)
 
+def enable_wifi(enable):
+    if enable:
+        print 'wifi up'
+        cmd = 'sudo ' + basedir + '/mcclock/wifiUp.bash'
+        ret = commands.getstatusoutput(cmd)
+        network_state = (ret[0] == 0)
+    else:
+        print 'wifi down'
+        cmd = 'sudo ' + basedir + '/mcclock/wifiDown.bash'
+        ret = commands.getstatusoutput(cmd)
+        network_state = not (ret[0] == 0)
+    #print 'invoked:',cmd
+    #print 'got:',ret
+    return network_state
+
 def is_wired():
     # Identify if a network cable is plugged or not
     netCablePlugged = True
@@ -56,7 +71,7 @@ def power_usb_bus(desired_state):
 def set_hw_volume(input):
     global hw_volume_level
     
-    if input < 1.0:
+    if input <= 1.0:
         vol = 0
     else:
         vol = round(50.0*math.log10(0.96*input))

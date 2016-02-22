@@ -9,7 +9,7 @@ from char_display import CharDisplay
 from alarm_clock import AlarmClock
 from pianobar_controller import PianobarController
 
-from utilities import is_wired, power_usb_bus, set_hw_volume
+from utilities import is_wired, power_usb_bus, set_hw_volume, enable_wifi
 
 import Adafruit_CharLCD as LCD
 
@@ -78,7 +78,8 @@ def enter_alarm():
     print "entering alarm mode"
     clock.enable(True)
     clock.update()
-    update_usb_power(False)
+    #update_usb_power(False)
+    enable_wifi(False)
     chlcd.enable(False)
 
 def exit_alarm():
@@ -89,7 +90,8 @@ def exit_alarm():
     
 def enter_player():
     print "entering player mode"
-    update_usb_power(False)
+    #update_usb_power(False)
+    enable_wifi(False)
     chlcd.enable(False)
     clock.set_music_dir(clock.musicdir)
     
@@ -99,7 +101,8 @@ def exit_player():
 
 def enter_pandora():
     print "entering pandora mode"
-    update_usb_power(True)
+    #update_usb_power(True)
+    enable_wifi(True)
     chlcd.enable(True)
     piano.launch()
     
@@ -111,7 +114,8 @@ def exit_pandora():
 def enter_special():
     print "entering special mode"
     # we want network in special mode to enable debugging
-    update_usb_power(True)
+    #update_usb_power(True)
+    enable_wifi(True)
     
 def exit_special():
     print "leaving special mode"
