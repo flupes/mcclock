@@ -74,9 +74,11 @@ class PianobarController(object):
         self.pianobar.send('n')
 
     def love(self):
+        self.display.timed_msg(2, 'LOVE !', 2)
         self.pianobar.send('+')
 
     def tired(self):
+        self.display.timed_msg(2, 'TIRED...', 2)
         self.pianobar.send('t')
 
     def select_station(self, station_id):
@@ -92,7 +94,7 @@ class PianobarController(object):
             return None
         
         lines = self.pianobar.before.splitlines()
-        print lines
+        # print lines
         stations = []
         p = re.compile('^(\S*\t ?)(\d+)\) [ q][ Q][ S] (.+)$')
         for st in lines:
@@ -118,7 +120,7 @@ class PianobarController(object):
         if (what & self.SONG) or (what & self.TIMING):
             print "update song or timing"
             msg = self.current_song[1] + ' | ' + self.current_song[0]
-            self.display.scroll_msg(2, msg, 50)
+            self.display.scroll_msg(2, msg, 0.6)
         
     def station_menu(self):
         self.station_list = self.get_stations()
@@ -130,7 +132,7 @@ class PianobarController(object):
         if self.station_index == len(self.station_list):
             print "current station not found in list!"
             self.station_index = 1
-        print self.station_list
+        # print self.station_list
         print "current station index is:", self.station_index
         self.station_id = self.station_list[self.station_index][0]
         self.menu = LcdMenu(self.display, self.station_list, self.station_index)
