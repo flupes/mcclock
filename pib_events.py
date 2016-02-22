@@ -29,7 +29,7 @@ class PibEvents(EventsBase):
 
     mode_names = [ 'PANDORA', 'PLAYER', 'SPECIAL', 'ALARM' ]
 
-    UPDATE_RATE = 20
+    UPDATE_RATE = 40.0
     SELECT_DEBOUNCE_PERIOD = 0.2
     ROTARY_DEBOUNCE_PERIOD = 0.3
     ROTARY_STABLE_PERIOD = 1.2
@@ -164,25 +164,32 @@ class PibEvents(EventsBase):
     def monitor_events(self):
         stat_period = 10
         missed_ticks = 0
+        worked_ticks = 0
+        
         last_stat_time = time.time()
+        
         while not self.terminate.isSet():
-
+            
+            start = time.time()
             self.process_volume_pot()
             self.process_joystick()
             self.process_dinputs()
-
-            now = time.time()
-            sleep_time = 1.0/self.UPDATE_RATE - now + self.last_update
+            worked_ticks = worked_ticks + 1
+            stop = time.time()
+            
+            sleep_time = 1.0/self.UPDATE_RATE - stop + start
             if sleep_time > 0:
                 time.sleep(sleep_time)
             else:
                 missed_ticks = missed_ticks+1
-            self.last_update = now
-            if (now - last_stat_time) > stat_period:
+            
+            if (stop - last_stat_time) > stat_period:
+                #print "ticked",worked_ticks,"in",stat_period,"at",self.UPDATE_RATE,"Hz"
+                worked_ticks = 0
                 if missed_ticks > 0:
                     print "warning: pib_events cannot respect",self.UPDATE_RATE,"Hz:"
                     print missed_ticks,"updates were too slow over",stat_period,"s !"
-                last_stat_time = now
+                last_stat_time = stop
                 missed_ticks = 0
                 
     def stop(self):
