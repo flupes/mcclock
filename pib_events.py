@@ -24,17 +24,18 @@ class PibEvents(EventsBase):
     # 3 -> 1 -> 0 -> 2
     MODE_ALARM = 3
     MODE_PLAYER = 1
-    MODE_PANDORA = 0
-    MODE_SPECIAL = 2
+    MODE_PANDORA = 2
+    MODE_SPECIAL = 0
 
-    mode_names = [ 'PANDORA', 'PLAYER', 'SPECIAL', 'ALARM' ]
+    mode_names = [ 'SPECIAL', 'PLAYER', 'PANDORA', 'ALARM' ]
 
     UPDATE_RATE = 40.0
     SELECT_DEBOUNCE_PERIOD = 0.2
     ROTARY_DEBOUNCE_PERIOD = 0.3
     ROTARY_STABLE_PERIOD = 1.2
             
-    def __init__(self):
+    def __init__(self, i2c_lock):
+        self.lock = i2c_lock
         # configure the digital pins
         GPIO.setmode(GPIO.BCM)
         self.select_switch = Debouncer(self.SELECT_SWITCH_PIN,
@@ -72,6 +73,11 @@ class PibEvents(EventsBase):
         self.mid_pot = [512, 512]
         self.calibrate_joystick()
 
+    def launch(self):
+        """Start monitoring events.
+        The launch is not part of the constructor to avoid having a thread
+        accessing the hardware before all the constructors that are not
+        protected by locks"""
         print "starting Pi-B events listener"
         self.terminate = threading.Event()
         self.thread = threading.Thread(name='monitor', target=self.monitor_events)
@@ -179,10 +185,12 @@ class PibEvents(EventsBase):
         while not self.terminate.isSet():
             
             start = time.time()
+            self.lock.acquire()
             self.process_volume_pot()
             self.process_joystick()
             self.process_light_sensor()
             self.process_dinputs()
+            self.lock.release()
             worked_ticks = worked_ticks + 1
             stop = time.time()
             

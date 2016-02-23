@@ -1,8 +1,10 @@
 import time
+import threading
 
 from char_display import CharDisplay
 
-disp = CharDisplay()
+lock = threading.Lock()
+disp = CharDisplay(lock)
 
 time.sleep(3)
 

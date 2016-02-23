@@ -37,7 +37,8 @@ class AlarmClock(object):
 
     wakeup_volume_limits = (15, 30)
         
-    def __init__(self):
+    def __init__(self, i2c_lock):
+        self.lock = i2c_lock
         # Initialize the 7 segment display
         self.segment = SevenSegment(address=0x70)
         self.tformat = '12h'
@@ -69,25 +70,30 @@ class AlarmClock(object):
         self.alarm_start_time = None
         
     def message(self, msg, delay):
+        self.lock.acquire()
         for i in range(len(msg)) :
             self.segment.writeDigitRaw(i, msg[i])
             self.msg_timestamp = time.time()
             self.msg_duration = delay
-
+        self.lock.release()
 
     def shutdown(self):
+        self.lock.acquire()
         self.segment.writeDigitRaw(0, 0x3F)
         self.segment.writeDigitRaw(1, 0x71)
         self.segment.writeDigitRaw(3, 0x71)
         self.segment.writeDigitRaw(4, 0x40)
         self.segment.setColon(False)
-
+        self.lock.release()
+        
     def set_brightness(self, level):
+        self.lock.acquire()
         if (level < 16) and (level >=0):
             print "new lcd brightness =",level
             self.brightness_level = level
             self.segment.disp.setBrightness(level)
-
+        self.lock.release()
+        
     def play_alarm(self):
         # Pick 5 random songs from the list
         pl = list(self.songs)
@@ -153,6 +159,7 @@ class AlarmClock(object):
                 dot = True
             else:
                 dot = False
+            self.lock.acquire()
             # Set hours
             self.segment.writeDigit(0, int(hour / 10))     # Tens
             self.segment.writeDigit(1, hour % 10, dot)     # Ones
@@ -160,9 +167,10 @@ class AlarmClock(object):
             self.segment.writeDigit(3, int(minute / 10))   # Tens
             # Ones and alarm enable (dot)
             self.segment.writeDigit(4, minute % 10, self.alarm_enabled)
-            # Toggle color
+            # Toggle colon
             self.segment.setColon(second % 2)              # Toggle colon at 1Hz
-
+            self.lock.release()
+            
         # Check if alarm is necessary
         alarm = False
         if self.alarm_enabled == True :

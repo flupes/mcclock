@@ -1,11 +1,13 @@
 import time
 import signal
 import datetime
+import threading
 
 from alarm_clock import AlarmClock
 from utilities import set_hw_volume
 
-clock = AlarmClock()
+lock = threading.Lock()
+clock = AlarmClock(lock)
 up = True
 
 def clean_exit(signum, frame):

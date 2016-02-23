@@ -21,15 +21,14 @@ class CharDisplay(object):
     state = None
     color = [ 1, 1, 0 ]
 
-    lock = threading.Lock()
-    
-    def __init__(self):
+    def __init__(self, i2c_lock):
+        self.lock = i2c_lock
         self.lcd = LCD.Adafruit_CharLCDPlate()
         self.enable(True)
 	self.custom_chars()
         self.static_msg(1, "Hello", 6)
         self.static_msg(2, "World", 6)
-
+        
     def custom_chars(self):
 	# great generator at: http://www.quinapalus.com/hd44780udg.html
 	# 0: play
@@ -56,7 +55,7 @@ class CharDisplay(object):
         msg -- the string to display
         period -- delay (in seconds) before shifting by one character
         """
-        #self.lock.acquire()
+        self.lock.acquire()
         if (line>0) and (line<=self.NUMBER_LINES):
             line = line - 1
             self.lines[line] = msg + '   '
@@ -68,7 +67,7 @@ class CharDisplay(object):
                 self.periods[line] = 0
                 print "scrolling message does not need to scroll!"
             self.__draw__(line)
-        #self.lock.release()
+        self.lock.release()
         
     def static_msg(self, line, msg, pos, flush=False):
         """
@@ -79,7 +78,7 @@ class CharDisplay(object):
         flush -- optional argument that will clear (or not) the rest of the line
                 if the message + position is shorter than the display.
         """
-        #self.lock.acquire()
+        self.lock.acquire()
         if (line>0) and (line<=self.NUMBER_LINES):
             line = line -1
             pos = pos - 1
@@ -92,7 +91,7 @@ class CharDisplay(object):
             self.periods[line] = 0
             self.positions[line] = pos
             self.__draw__(line)
-        #self.lock.release()
+        self.lock.release()
         
     def timed_msg(self, line, msg, duration):
         """
@@ -102,14 +101,14 @@ class CharDisplay(object):
         duration -- the duration (in seconds) the message should be 
                         display before resuming the regular display
         """
-        #self.lock.acquire()
+        self.lock.acquire()
         if (line>0) and (line<=self.NUMBER_LINES):
             line = line - 1
             msg = msg + "                        "
             self.tempmsgs[line] = msg[0:self.NUMBER_CHARS]            
             self.expirations[line] = time.time()+duration
             self.__draw__(line)
-        #self.lock.release()
+        self.lock.release()
         
     def clear(self):
         """Completely clear the display"""
@@ -122,7 +121,7 @@ class CharDisplay(object):
         
     def enable(self, state):
         """Enable or disable the display (disable ~= turn off)"""
-        #self.lock.acquire()
+        self.lock.acquire()
         if self.state != state:
             self.state = state
             if state:
@@ -133,11 +132,11 @@ class CharDisplay(object):
                 self.lcd.clear()
                 self.lcd.set_color(0, 0, 0)
                 self.lcd.enable_display(False)
-        #self.lock.release()
+        self.lock.release()
         
     def update(self):
         """Tick the display to allow dynamic effects"""
-        #self.lock.acquire()
+        self.lock.acquire()
         now = time.time()
         for l in range(0, self.NUMBER_LINES):
             if self.expirations[l] > 0:
@@ -153,7 +152,7 @@ class CharDisplay(object):
                     if self.indices[l] >= len(self.lines[l]):
                         self.indices[l] = 0
                     self.__draw__(l)                    
-        #self.lock.release()
+        self.lock.release()
         
     def __draw__(self, l):
         if self.expirations[l] > 0:

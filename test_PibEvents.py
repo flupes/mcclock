@@ -1,9 +1,13 @@
 import time
+import threading
 from pib_events import PibEvents
 
 up = True
 
-pe = PibEvents()
+lock = threading.Lock()
+pe = PibEvents(lock)
+
+pe.launch()
 
 while up:
     while pe.queue.empty() == False:
