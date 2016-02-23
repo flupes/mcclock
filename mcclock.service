@@ -1,0 +1,14 @@
+[Unit]
+Description=Minecraft Alarm Clock
+
+[Service]
+User=pi
+ExecStart=/home/pi/devel/mcclock/launch.sh
+
+[Install]
+WantedBy=runlevel4.target
+
+# To Install: copy to /etc/systemd/system and then activate:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable mcclock
+
