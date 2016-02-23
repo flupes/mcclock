@@ -15,9 +15,11 @@ import Adafruit_CharLCD as LCD
 
 up = True
 
-pe = PibEvents()
-chlcd = CharDisplay()
-clock = AlarmClock()
+hw_lock = threading.Lock()
+
+pe = PibEvents(hw_lock)
+chlcd = CharDisplay(hw_lock)
+clock = AlarmClock(hw_lock)
 piano = PianobarController(chlcd)
 
 #mode = pe.rotary_state
@@ -130,8 +132,12 @@ exit_mode[PibEvents.MODE_ALARM] = exit_alarm
 exit_mode[PibEvents.MODE_PLAYER] = exit_player
 exit_mode[PibEvents.MODE_PANDORA] = exit_pandora
 exit_mode[PibEvents.MODE_SPECIAL] = exit_special
-           
+
+# start monitoring thread
+pe.launch()
+
 while up:
+    new_volume = None
     while pe.queue.empty() == False:
         e = pe.queue.get_nowait()
 
@@ -151,7 +157,8 @@ while up:
             chlcd.timed_msg(1, PibEvents.mode_names[e[1]], 1.5)
 
         elif e[0] == PibEvents.VOLUME:
-            current_volume_level = set_hw_volume(e[1])
+            # only process the newest volume level once to avoid delays
+            new_volume = e[1]
 
         elif e[0] == PibEvents.LIGHT:
             clock.set_brightness(e[1]*max_leds_brightness/16)
@@ -169,6 +176,9 @@ while up:
                     # special condition to exit
                     up = False
 
+    if new_volume is not None:
+        current_volume_level = set_hw_volume(new_volume)
+                
     alarm = clock.update()
     if alarm == True:
         print "WAKEUP!"
@@ -177,7 +187,7 @@ while up:
         piano.update()
         
     chlcd.update()
-    time.sleep(0.3)
+    time.sleep(0.1)
 
 print "wait for reset monitor thread to terminate"
 reset_terminate.set()
