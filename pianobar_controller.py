@@ -74,12 +74,12 @@ class PianobarController(object):
         self.pianobar.send('n')
 
     def love(self):
-        self.display.timed_msg(2, 'LOVE !', 2)
+        self.display.timed_msg(2, 'LOVE !', 5)
         self.pianobar.send('+')
 
     def tired(self):
-        self.display.timed_msg(2, 'TIRED...', 2)
-        self.pianobar.send('t')
+        self.display.timed_msg(2, 'NOT TIRED ;-)', 5)
+        #self.pianobar.send('t')
 
     def select_station(self, station_id):
         self.pianobar.send(station_id)
@@ -120,7 +120,7 @@ class PianobarController(object):
         if (what & self.SONG) or (what & self.TIMING):
             print "update song or timing"
             msg = self.current_song[1] + ' | ' + self.current_song[0]
-            self.display.scroll_msg(2, msg, 0.6)
+            self.display.scroll_msg(2, msg, 0.3)
         
     def station_menu(self):
         self.station_list = self.get_stations()

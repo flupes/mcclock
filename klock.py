@@ -94,8 +94,8 @@ def exit_alarm():
 def enter_player():
     print "entering player mode"
     #update_usb_power(False)
-    enable_wifi(False)
     chlcd.enable(False)
+    enable_wifi(False)
     clock.set_music_dir(clock.musicdir)
     
 def exit_player():
@@ -105,8 +105,8 @@ def exit_player():
 def enter_pandora():
     print "entering pandora mode"
     #update_usb_power(True)
-    enable_wifi(True)
     chlcd.enable(True)
+    enable_wifi(True)
     piano.launch()
     
 def exit_pandora():
@@ -154,7 +154,7 @@ while up:
             enter_mode[mode]()
 
         elif e[0] == PibEvents.ROTARY:
-            chlcd.timed_msg(1, PibEvents.mode_names[e[1]], 1.5)
+            chlcd.timed_msg(1, PibEvents.mode_names[e[1]], 3)
 
         elif e[0] == PibEvents.VOLUME:
             # only process the newest volume level once to avoid delays
