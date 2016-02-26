@@ -25,7 +25,7 @@ clock.ringed_today = False
 clock.number_of_wakeup_songs = 2
 clock.volume_rampup_time = 20
 
-set_hw_volume(5)
+set_hw_volume(30)
 
 clock.message([0x01, 0xC1, 0x00, 0x3E, 0x73], 3)
 

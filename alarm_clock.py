@@ -35,7 +35,7 @@ class AlarmClock(object):
     volume_rampup_time = 45
     current_sw_volume = 0
 
-    wakeup_volume_limits = (15, 30)
+    wakeup_volume_limits = (6, 24)
         
     def __init__(self, i2c_lock):
         self.lock = i2c_lock
