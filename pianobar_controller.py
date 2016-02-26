@@ -33,10 +33,21 @@ class PianobarController(object):
         if self.pianobar == None:
             try:
                 print "spawing pianobar..."
+                self.display.static_msg(2, 'Starting...', 1 , True)
                 self.pianobar = pexpect.spawn(self.PIANOBAR_CMD)
-                self.pianobar.expect('Get stations... Ok.\r\n', timeout=30)
+                # send a default station: if it was not cached, this should
+                # help pianobar to start. Otherwise it should do not harm to
+                # pianobar (keys ignored?).
+                sefl.pianobar.send('0\n')
+                try:
+                    self.pianobar.expect('Get stations... Ok.\r\n', timeout=30)
+                except:
+                    print "pianobar did not come up properly!"
+                    self.mode.PianobarController.STOP
+                    self.pianobar.terminate(force=True)
+                    self.display.static_msg(2, 'Error! Try Again...', 1, True)
                 print "pianobar started..."
-                self.mode = PianobarController.PAUSED
+                self.mode = PianobarController.PLAYING
             except:
                 print "launching pianobar failed!"
         else:
