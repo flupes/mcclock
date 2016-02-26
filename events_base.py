@@ -15,7 +15,7 @@ class EventsBase(object):
     JOYSTICK = 4
     ROTARY = 5
 
-    queue = Queue.Queue(32)
+    queue = Queue.Queue(64)
     volume = 5
     mode = 0
 
@@ -24,4 +24,6 @@ class EventsBase(object):
             self.queue.put_nowait( event )
         except Queue.Full:
             print "event queue full: abnormal condition!"
-
+            while self.queue.empty() == False:
+                pe.queue.get_nowait()
+            print "auto clear the queue (what a bad response)..."
