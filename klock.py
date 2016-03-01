@@ -53,7 +53,8 @@ def monitor_reset(char_lcd):
 
     if not up:
         print "detected reset signal!"
-        cmd = "sudo shutdown -h now"
+        #cmd = "sudo shutdown -h now"
+        cmd = "sudo reboot"
         res = commands.getstatusoutput(cmd)
         # should never get there...
         print cmd,"->",res
