@@ -35,10 +35,6 @@ class PianobarController(object):
                 print "spawing pianobar..."
                 self.display.static_msg(2, 'Starting...', 1 , True)
                 self.pianobar = pexpect.spawn(self.PIANOBAR_CMD)
-                # send a default station: if it was not cached, this should
-                # help pianobar to start. Otherwise it should do not harm to
-                # pianobar (keys ignored?).
-                sefl.pianobar.send('0\n')
                 try:
                     self.pianobar.expect('Get stations... Ok.\r\n', timeout=30)
                 except:
@@ -49,15 +45,29 @@ class PianobarController(object):
                 print "pianobar started..."
                 self.mode = PianobarController.PLAYING
             except:
+                self.mode = PianobarController.OFF
                 print "launching pianobar failed!"
         else:
             print "pianobar already spawned: hopping it is in a good state..."
 
         self.current_station = None
-        # force start playing
-        print "start playing..."
-        self.pianobar.send('P')
-        self.mode = PianobarController.PLAYING
+
+        if self.mode == PianobarController.PLAYING:
+            # send a default station: if it was not cached, this should
+            # help pianobar to start. Otherwise it should do not harm to
+            # pianobar (keys ignored?).
+            self.pianobar.send('0\n')
+            print "start playing..."
+            # force start playing, just to be on the safe side
+            self.pianobar.send('P')
+            self.mode = PianobarController.PLAYING
+        else:
+            # kill the process for clean start next time
+            if self.pianobar.isalive():
+                print "kill stuck pianobar process"
+                self.pianobar.kill(9)
+            self.pianobar = None
+            self.display.scroll_msg(2, 'Pianobar failed to start! Try again later...', 0.3)
 
     def stop(self):
         if self.mode == PianobarController.OFF:
