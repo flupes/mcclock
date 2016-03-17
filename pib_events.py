@@ -176,7 +176,7 @@ class PibEvents(EventsBase):
                 self.add_event( (self.KEY, self.KEY_SELECT) )
                 
     def monitor_events(self):
-        stat_period = 10
+        stat_period = 100
         missed_ticks = 0
         worked_ticks = 0
         
